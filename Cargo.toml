@@ -1,6 +1,6 @@
 [package]
 name = "rust_igmm"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 [lib]
@@ -20,9 +20,26 @@ hex = "0.4"
 jit-assembler = "0.3"
 dispatch = "0.2.0"
 
+# iOS UI overlay
+objc2 = "0.6"
+objc2-foundation = "0.3"
+objc2-core-foundation = "0.3"
+objc2-ui-kit = "0.3"
+objc2-quartz-core = "0.3"
+objc2-core-graphics = "0.3"
+
 [profile.release]
 opt-level = "z"
 lto = true
 codegen-units = 1
 panic = "abort"
 strip = true
+
+[profile.dev-release]
+inherits = "release"
+opt-level = 0
+lto = false
+codegen-units = 256
+panic = "abort"
+strip = false
+incremental = true

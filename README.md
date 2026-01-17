@@ -30,6 +30,7 @@ pub const DEBUG: bool = true;                         // Toggle detailed logging
    rustup target add aarch64-apple-ios
    brew install sshpass
    https://theos.dev/docs/installation-ios
+   cargo install sccache # for better perfomance
    ```
 
 2. **Deploy to Device**:
@@ -47,12 +48,12 @@ Logs are sent to the Apple Unified Logging System. You can view them using **Con
 
 Planned features and improvements for future releases:
 
-- [ ] **In-Game UI Menu**: SwiftUI or Metal-based overlay for runtime mod control
+- [x] **In-Game UI Menu**: SwiftUI or Metal-based overlay for runtime mod control *(foundation implemented)*
 - [ ] **Memory Scanning**: Pattern scanning and signature-based function finding
 - [ ] **Breakpoint Hooks**: Hardware breakpoint support for non-jailbroken devices
 - [ ] **Symbol Resolution**: Automatic symbol lookup and caching
-- [ ] **Configuration File**: TOML/JSON-based mod configurations
 - [ ] **Hot Reloading**: Dynamic mod loading without reinjection
+- [ ] **Il2cpp Resolver**: Automatic il2cpp class and method resolution
 
 ## Contributing
 

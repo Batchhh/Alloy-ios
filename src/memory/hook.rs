@@ -49,13 +49,13 @@ pub enum HookError {
     ThreadError(#[from] super::thread::ThreadError),
 }
 
-#[allow(dead_code)]
+
 pub struct Hook {
     target: usize,
     trampoline: usize,
 }
 
-#[allow(dead_code)]
+
 impl Hook {
     #[inline]
     pub fn trampoline(&self) -> usize {
@@ -248,7 +248,7 @@ unsafe fn install_regular_hook(target: usize, replacement: usize) -> Result<usiz
     Ok(trampoline_base)
 }
 
-#[allow(dead_code)]
+
 pub unsafe fn remove(rva: usize) -> bool {
     match image::get_image_base(config::TARGET_IMAGE_NAME) {
         Ok(base) => remove_at_address(base + rva),

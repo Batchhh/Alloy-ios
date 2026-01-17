@@ -10,6 +10,7 @@ use thiserror::Error;
 const CACHE_LINE_SIZE: usize = 64;
 
 #[derive(Error, Debug)]
+
 pub enum PatchError {
     #[error("Invalid hex: {0}")]
     InvalidHex(#[from] hex::FromHexError),
@@ -24,11 +25,14 @@ pub enum PatchError {
 }
 
 pub struct Patch {
+    
     address: usize,
+    
     original_bytes: Vec<u8>,
 }
 
 impl Patch {
+    
     pub fn revert(&self) {
         unsafe {
             if let Err(e) = write_bytes(self.address, &self.original_bytes) {
@@ -38,7 +42,7 @@ impl Patch {
     }
 }
 
-#[allow(dead_code)]
+
 pub fn apply(rva: usize, hex_str: &str) -> Result<Patch, PatchError> {
     let clean: String = hex_str.chars().filter(|c| !c.is_whitespace()).collect();
     let bytes = hex::decode(&clean)?;
@@ -53,6 +57,7 @@ pub fn apply(rva: usize, hex_str: &str) -> Result<Patch, PatchError> {
         original_bytes,
     })
 }
+
 
 pub fn apply_asm<F>(rva: usize, build: F) -> Result<Patch, PatchError>
 where

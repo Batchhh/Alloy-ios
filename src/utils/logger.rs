@@ -27,6 +27,12 @@ pub fn info(msg: &str) {
     log::info!("[RGG] {}", msg);
 }
 
+
+pub fn debug(msg: &str) {
+    ensure_initialized();
+    log::debug!("[RGG] {}", msg);
+}
+
 pub fn warning(msg: &str) {
     ensure_initialized();
     log::warn!("[RGG] {}", msg);

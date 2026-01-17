@@ -26,7 +26,7 @@ pub enum RwError {
     ThreadError(#[from] super::thread::ThreadError),
 }
 
-#[allow(dead_code)]
+
 pub unsafe fn read<T: Copy>(address: usize) -> Result<T, RwError> {
     if address == 0 {
         return Err(RwError::NullPointer);
@@ -34,13 +34,13 @@ pub unsafe fn read<T: Copy>(address: usize) -> Result<T, RwError> {
     Ok(ptr::read(address as *const T))
 }
 
-#[allow(dead_code)]
+
 pub unsafe fn read_at_rva<T: Copy>(rva: usize) -> Result<T, RwError> {
     let base = super::image::get_image_base(crate::config::TARGET_IMAGE_NAME)?;
     read::<T>(base + rva)
 }
 
-#[allow(dead_code)]
+
 pub unsafe fn read_pointer_chain(base: usize, offsets: &[usize]) -> Result<usize, RwError> {
     if base == 0 {
         return Err(RwError::NullPointer);
@@ -64,7 +64,7 @@ pub unsafe fn read_pointer_chain(base: usize, offsets: &[usize]) -> Result<usize
     Ok(current)
 }
 
-#[allow(dead_code)]
+
 pub unsafe fn write<T: Copy>(address: usize, value: T) -> Result<(), RwError> {
     if address == 0 {
         return Err(RwError::NullPointer);
@@ -74,7 +74,7 @@ pub unsafe fn write<T: Copy>(address: usize, value: T) -> Result<(), RwError> {
 }
 
 /// Write a value to code/executable memory. Changes protection and invalidates icache.
-#[allow(dead_code)]
+
 pub unsafe fn write_code<T: Copy>(address: usize, value: T) -> Result<(), RwError> {
     if address == 0 {
         return Err(RwError::NullPointer);
@@ -84,7 +84,7 @@ pub unsafe fn write_code<T: Copy>(address: usize, value: T) -> Result<(), RwErro
     write_bytes_internal(address, data)
 }
 
-#[allow(dead_code)]
+
 pub unsafe fn write_at_rva<T: Copy>(rva: usize, value: T) -> Result<(), RwError> {
     let base = super::image::get_image_base(crate::config::TARGET_IMAGE_NAME)?;
     write::<T>(base + rva, value)
