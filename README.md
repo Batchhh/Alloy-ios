@@ -15,12 +15,10 @@ A long-term project to build an iOS game mod menu framework entirely in Rust.
 
 ## Features
 
-- **Zero External Dependencies**: All hooking and patching logic is implemented from scratch in pure Rust—no Substrate, Fishhook, or Dobby used.
+- **Zero External Dependencies**: All hooking and patching logic is implemented from scratch in pure Rust.
 - **ARM64 Inline Hooking**: Custom trampoline generation with PC-relative instruction support.
 - **Memory Patching**: Safe W^X compliant memory writing.
 - **Thread Safety**: Automatic thread suspension/resumption during patches.
-- **System Logging**: Integration with Apple Unified Logging System.
-- **Configurable**: Easily toggle debug logging and target image in `src/config.rs`.
 
 ## Configuration
 
