@@ -43,6 +43,17 @@ pub const DEBUG: bool = true;                         // Toggle detailed logging
 Logs are sent to the Apple Unified Logging System. You can view them using **Console.app** on macOS:
 - filter for: `RGG` or `subsystem:com.rust_tweak`.
 
+## Roadmap
+
+Planned features and improvements for future releases:
+
+- [ ] **In-Game UI Menu**: SwiftUI or Metal-based overlay for runtime mod control
+- [ ] **Memory Scanning**: Pattern scanning and signature-based function finding
+- [ ] **Breakpoint Hooks**: Hardware breakpoint support for non-jailbroken devices
+- [ ] **Symbol Resolution**: Automatic symbol lookup and caching
+- [ ] **Configuration File**: TOML/JSON-based mod configurations
+- [ ] **Hot Reloading**: Dynamic mod loading without reinjection
+
 ## Contributing
 
 Contributions are welcome! If you find any issues or have suggestions, please [open an issue](https://github.com/Batchhh/Rust-ios-tweak/issues).
