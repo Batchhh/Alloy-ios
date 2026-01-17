@@ -1,0 +1,8 @@
+target/
+.DS_Store
+*.swp
+.idea/
+.vscode/
+packages/
+.theos
+Makefile
