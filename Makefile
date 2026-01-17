@@ -8,7 +8,7 @@ ifdef SCCACHE
 endif
 
 before-all::
-	@printf "\033[1;32m==>\033[0m Building Rust library...\n"
+	@printf "\033[1;36m==>\033[0m Building Rust library...\n"
 	cargo build --profile $(RUST_PROFILE) --target aarch64-apple-ios
 
 # Target configuration
@@ -36,12 +36,21 @@ clean::
 	rm -rf .theos packages
 	cargo clean
 
+fmt:
+	@printf "\033[1;36m==>\033[0m Formatting Rust code...\n"
+	cargo fmt
+
+clippy:
+	@printf "\033[1;36m==>\033[0m Running Clippy...\n"
+	cargo clippy --all-targets --all-features -- -D warnings
+
 # We are using sshpass to avoid typing the password every time
 deploy:
-	@printf "\033[1;32m==>\033[0m Cleaning...\n"
+	$(MAKE) fmt
+	@printf "\033[1;36m==>\033[0m Cleaning...\n"
 	find .theos/obj -name "*.dylib" -delete 2>/dev/null || true
 	$(MAKE) all
 	$(MAKE) package
-	@printf "\033[1;32m=>\033[0m Copying package to device...\n"
+	@printf "\033[1;36m=>\033[0m Copying package to device...\n"
 	@sshpass -p "$(DEVICE_PASS)" scp packages/*.deb $(DEVICE_USER)@$(DEVICE_IP):~
-	@printf "\033[1;32m>\033[0m Deploy complete.\n"
+	@printf "\033[1;36m>\033[0m Deploy complete.\n"
