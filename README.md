@@ -1,24 +1,18 @@
-# Rust ios tweak
+# Rust iOS Tweak
 
-A long-term project to build an iOS game mod menu framework entirely in Rust.
-
-## Why Rust?
-
-- **Memory Safety**
-- **Performance**
-- **Developer Experience**
-- **Maintainability**
+A high-performance iOS modding framework built entirely from scratch in Rust—no Substrate, no Dobby, no external libraries.
 
 ## Status
 
-**Currently Jailbreak Only** - This project currently requires a jailbroken iOS device to function. Support for non-jailbroken devices is planned for future development.
+**Currently Jailbreak Only** - This project requires a jailbroken iOS device. Support for non-jailbroken devices is planned for future development.
 
 ## Features
 
-- **Zero External Dependencies**: All hooking and patching logic is implemented from scratch in pure Rust.
-- **ARM64 Inline Hooking**: Custom trampoline generation with PC-relative instruction support.
-- **Memory Patching**: Safe W^X compliant memory writing.
-- **Thread Safety**: Automatic thread suspension/resumption during patches.
+- **Custom ARM64 Inline Hooking**: Hand-crafted trampoline generation with PC-relative instruction relocation (supports conditional branches, BL, ADR/ADRP, and LDR literals).
+- **W^X Compliant Memory Patching**: Safe memory writes with automatic thread suspension/resumption and instruction cache invalidation.
+- **Type-Safe Memory Utilities**: Read/write operations with RVA-to-absolute address conversion and pointer chain traversal.
+- **Apple Unified Logging**: Direct `oslog` integration for debugging via Console.app.
+- **Zero External Binary Dependencies**: Built on direct `mach2` syscalls and idiomatic Rust with exhaustive error handling via `thiserror`.
 
 ## Configuration
 
