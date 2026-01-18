@@ -91,7 +91,6 @@ fn init_ui() {
 
     // Page 0: Breakpoint hook test toggle
 
-    // void onDamage_rpl(void* self, void* _battle_damage) {
     ui::add_toggle(
         0,
         "Brk Hook test",
