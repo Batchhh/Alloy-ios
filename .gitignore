@@ -1,3 +1,7 @@
+# Environment files
+.env
+.env.local
+
 target/
 .DS_Store
 *.swp
@@ -6,4 +10,4 @@ target/
 packages/
 Cargo.lock
 .theos
-Makefile
+scripts/

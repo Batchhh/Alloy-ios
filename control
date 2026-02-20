@@ -1,8 +1,8 @@
-Package: com.rusttweak.ios
-Name: Rust ios Tweak
-Version: 0.2.5
+Package: com.batch.alloy
+Name: Alloy
+Version: 1.0.0
 Architecture: iphoneos-arm64
-Description: iOS tweak written entirely in Rust
+Description: Modding framework
 Maintainer: Batch
 Author: Batch
 Section: Tweaks

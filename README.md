@@ -1,59 +1,29 @@
-# Rust iOS Tweak
+# Alloy ios tweak
 
-A high-performance iOS modding framework built entirely from scratch in Rust—no Substrate, no Dobby, no external libraries.
+High-performance iOS modding framework built in Rust.
 
 ## Features
+- **Hooking**: ARM64 Inline & Hardware Breakpoints.
+- **Memory**: Safe patching, scanning, and symbol resolution.
+- **UI**: Native iOS Menu (objc2) & content-rich Mod Menu.
+- **Stealth**: Stealthy hooking and patching. (ShellCode Injection + Code Caves)
 
-- **ARM64 Inline Hooking**: Custom trampoline generation and instruction relocation (Jailbreak only).
-- **Hardware Breakpoints**: Non-jailbreak hooking via debug registers (Both).
-- **W^X Memory Patching**: Safe writes with thread management and cache invalidation (Jailbreak only).
-- **Memory Utilities**: Type-safe RVA conversion and pointer chain traversal.
-- **Memory Scanning**: IDA-style signature finding with wildcards.
-- **Zero Dependencies**: Pure Rust using direct `mach2` syscalls.
-- **In-Game UI**: Responsive menu built with `objc2`.
+## Usage
 
-
-## Configuration
-
-You can customize the tweak behavior in `src/config.rs`:
-
-```rust
-pub const TARGET_IMAGE_NAME: &str = "UnityFramework";             // Binary to hook
-pub const DEBUG: bool = true;                                     // Toggle detailed logging
-pub const SELECTED_THEME: ThemeVariant = ThemeVariant::Default;   // Theme variant
-```
-
-## Building & Deploying
-
-1. **Prerequisites**:
+1. **Configure**: Edit `src/config.rs` to set target binary and options.
+2. **Deploy**:
    ```bash
-   rustup target add aarch64-apple-ios
-   brew install sshpass
-   https://theos.dev/docs/installation-ios
-   cargo install sccache # for better perfomance
-   ```
-
-2. **Deploy to Device**:
-   ```bash
-   # Edit Makefile to set your DEVICE_IP
    make deploy
    ```
+
+## Documentation
+
+Read the source code to understand it better, since there will be no documentation. It is easy to understand since it is well commented.
 
 ## Viewing Logs
 
 Logs are sent to the Apple Unified Logging System. You can view them using **Console.app** on macOS:
-- filter for: `RGG` or `subsystem:com.rust_tweak`.
-
-## Roadmap
-
-Planned features and improvements for future releases:
-
-- [x] **In-Game UI Menu**: SwiftUI or Metal-based overlay for runtime mod control *(foundation implemented)*
-- [x] **Memory Scanning**: Pattern scanning and signature-based function finding
-- [x] **Breakpoint Hooks**: Hardware breakpoint support for non-jailbroken devices
-- [x] **Symbol Resolution**: Automatic symbol lookup and caching
-- [ ] **Hot Reloading**: Dynamic mod loading without reinjection
-- [ ] **Il2cpp Resolver**: Automatic il2cpp class and method resolution
+- filter for: `Alloy` or `subsystem:com.batch.alloy`.
 
 ## Contributing
 
@@ -65,9 +35,9 @@ Follow Rust conventions (`cargo fmt`, `cargo clippy`) and document your changes.
 
 ### Commit Guidelines
 
-Use clear, descriptive commit messages:
-Format: `type: brief description`
-Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`
+- Use clear, descriptive messages
+- Format: `type: brief description`
+- Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`
 
 ## Legal
 

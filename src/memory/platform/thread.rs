@@ -18,11 +18,20 @@ use mach2::{
 use thiserror::Error;
 
 #[derive(Error, Debug)]
+/// Errors that can occur during thread manipulation
 pub enum ThreadError {
+    /// Failed to retrieve the list of threads for the current task
     #[error("Failed to get task threads (kern_return: {0})")]
     TaskThreadsFailed(i32),
 }
 
+/// Suspends all other threads in the current task to prevent race conditions during memory modification.
+///
+/// This is critical when applying patches or hooks to ensure that no thread is executing the code
+/// being modified.
+///
+/// # Returns
+/// * `Result<Vec<mach_port_t>, ThreadError>` - A list of suspended thread ports (needed to resume them later)
 pub unsafe fn suspend_other_threads() -> Result<Vec<mach_port_t>, ThreadError> {
     let mut thread_list: thread_act_array_t = ptr::null_mut();
     let mut thread_count: mach_msg_type_number_t = 0;
@@ -52,6 +61,10 @@ pub unsafe fn suspend_other_threads() -> Result<Vec<mach_port_t>, ThreadError> {
     Ok(suspended_threads)
 }
 
+/// Resumes threads that were previously suspended
+///
+/// # Arguments
+/// * `threads` - A slice of thread ports to resume (returned by `suspend_other_threads`)
 pub unsafe fn resume_threads(threads: &[mach_port_t]) {
     for &thread in threads {
         thread_resume(thread);

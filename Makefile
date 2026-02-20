@@ -1,5 +1,10 @@
 # Rust library
-RUST_PROFILE ?= dev-release
+RUST_PROFILE ?= release
+
+# Enable with dev-release profile logging
+ifeq ($(RUST_PROFILE),dev-release)
+    export RUSTFLAGS += --cfg dev_release
+endif
 
 # Auto-detect sccache for faster rebuilds
 SCCACHE := $(shell command -v sccache 2> /dev/null)
@@ -13,20 +18,24 @@ before-all::
 
 # Target configuration
 ARCHS = arm64
-TARGET := iphone:clang:latest:14.0
 FINALPACKAGE = 1
+THEOS_DYLIB := .theos/obj/arm64/alloy.dylib 
 
-# Device config (change IP as needed)
+# Load environment from .env file (if exists)
+-include .env
+
+# Device config (defaults, override in .env)
 DEVICE_IP ?= 1.1.1
 DEVICE_USER ?= mobile
 DEVICE_PASS ?= 1
 
 include $(THEOS)/makefiles/common.mk
 
-TWEAK_NAME = rgg
+TWEAK_NAME = alloy
+RUST_LIB := target/aarch64-apple-ios/$(RUST_PROFILE)/liballoy.a
 
 ${TWEAK_NAME}_CFLAGS = -fobjc-arc
-${TWEAK_NAME}_LDFLAGS = -force_load target/aarch64-apple-ios/$(RUST_PROFILE)/librust_igmm.a
+${TWEAK_NAME}_LDFLAGS = -force_load $(RUST_LIB)
 ${TWEAK_NAME}_FRAMEWORKS = UIKit Foundation CoreGraphics QuartzCore
 ${TWEAK_NAME}_LIBRARIES = objc
 
@@ -44,13 +53,23 @@ clippy:
 	@printf "\033[1;36m==>\033[0m Running Clippy...\n"
 	cargo clippy --all-targets --all-features -- -D warnings
 
-# We are using sshpass to avoid typing the password every time
 deploy:
-	$(MAKE) fmt
-	@printf "\033[1;36m==>\033[0m Cleaning...\n"
-	find .theos/obj -name "*.dylib" -delete 2>/dev/null || true
-	$(MAKE) all
-	$(MAKE) package
-	@printf "\033[1;36m=>\033[0m Copying package to device...\n"
-	@sshpass -p "$(DEVICE_PASS)" scp packages/*.deb $(DEVICE_USER)@$(DEVICE_IP):~
-	@printf "\033[1;36m>\033[0m Deploy complete.\n"
+	@$(MAKE) fmt
+	@$(MAKE) rust-build
+	@if [ ! -f "$(THEOS_DYLIB)" ] || [ "$(RUST_LIB)" -nt "$(THEOS_DYLIB)" ]; then \
+		printf "\033[1;36m==>\033[0m Rust lib changed, re-linking...\n"; \
+		$(MAKE) theos-link; \
+	else \
+		printf "\033[1;36m==>\033[0m Dylib up-to-date, skipping link\n"; \
+	fi
+	@$(MAKE) package
+	@printf "\033[1;36m==>\033[0m Deploy complete!\n"
+
+rust-build:
+	@printf "\033[1;36m==>\033[0m Building Rust library...\n"
+	@cargo build --profile $(RUST_PROFILE) --target aarch64-apple-ios
+
+theos-link:
+	@find .theos/obj -name "*.dylib" -delete 2>/dev/null || true
+	@$(MAKE) all
+

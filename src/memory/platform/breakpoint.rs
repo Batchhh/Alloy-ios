@@ -1,4 +1,11 @@
-//! ARM64 Hardware Breakpoint Hooking
+//! # Hardware Breakpoint Hooking
+//!
+//! This module implements hooking using ARM64 hardware breakpoints (watchpoints/breakpoints).
+//! This method is "stealthier" than inline patches as it doesn't modify the executable code,
+//! but it is limited by the number of hardware debug registers (max 6).
+//!
+//! It uses Mach exception handling to catch the breakpoint exception and redirect execution.
+
 use crate::memory::ffi::mach_exc::{
     task_get_exception_ports, task_set_exception_ports, task_set_state,
 };
@@ -111,17 +118,24 @@ struct ExcRaiseStateReply {
 }
 
 #[derive(Error, Debug)]
+/// Errors that can occur during breakpoint operations
 pub enum BrkHookError {
+    /// The maximum number of hooks has been reached
     #[error("Too many hooks (max {MAX_HOOKS})")]
     TooManyHooks,
+    /// A hook already exists at the specified address
     #[error("Hook already exists at {0:#x}")]
     AlreadyExists(usize),
+    /// The hardware limit for breakpoints has been exceeded
     #[error("Exceeds hardware breakpoints: {0}")]
     ExceedsHwBreakpoints(i32),
+    /// Failed to set the thread state (debug registers)
     #[error("Failed to set debug state")]
     SetStateFailed,
+    /// The specified hook was not found
     #[error("Hook not found at {0:#x}")]
     NotFound(usize),
+    /// Failed to initialize the exception handler
     #[error("Initialization failed")]
     InitFailed,
 }
@@ -141,6 +155,7 @@ struct HookManager {
 }
 
 impl HookManager {
+    /// Creates a new empty hook manager
     const fn new() -> Self {
         const NONE: Option<HookEntry> = None;
         Self {
@@ -148,11 +163,12 @@ impl HookManager {
             orig_handler_port: MACH_PORT_NULL,
             hooks: [NONE; MAX_HOOKS],
             active_count: 0,
-            hw_breakpoints: 6,
+            hw_breakpoints: 6, // hardware limitiation is 6, we can't increase this!
             initialized: false,
         }
     }
 
+    /// Finds a replacement address for a given target PC
     fn find_hook(&self, pc: usize) -> Option<usize> {
         self.hooks
             .iter()
@@ -160,6 +176,7 @@ impl HookManager {
             .find_map(|h| (h.old == pc).then_some(h.new))
     }
 
+    /// Registers a new hook in the manager
     fn add_hook(&mut self, old: usize, new: usize) -> Result<usize, BrkHookError> {
         if self.hooks.iter().flatten().any(|h| h.old == old) {
             return Err(BrkHookError::AlreadyExists(old));
@@ -174,6 +191,7 @@ impl HookManager {
         Err(BrkHookError::TooManyHooks)
     }
 
+    /// Removes a hook from the manager
     fn remove_hook(&mut self, old: usize) -> Result<(), BrkHookError> {
         for slot in self.hooks.iter_mut() {
             if let Some(hook) = slot {
@@ -191,6 +209,7 @@ impl HookManager {
 static MANAGER: Lazy<Mutex<HookManager>> = Lazy::new(|| Mutex::new(HookManager::new()));
 static HANDLER_RUNNING: AtomicBool = AtomicBool::new(false);
 
+/// Thread that handles Mach exceptions for breakpoints
 extern "C" fn exception_handler_thread(_: *mut c_void) -> *mut c_void {
     HANDLER_RUNNING.store(true, Ordering::SeqCst);
 
@@ -290,6 +309,7 @@ extern "C" fn exception_handler_thread(_: *mut c_void) -> *mut c_void {
     }
 }
 
+/// Initializes the global exception handler
 unsafe fn init_exception_handler() -> Result<(), BrkHookError> {
     let mut manager = MANAGER.lock();
     if manager.initialized {
@@ -364,6 +384,7 @@ unsafe fn init_exception_handler() -> Result<(), BrkHookError> {
         );
     }
 
+    #[cfg(dev_release)]
     logger::info(&format!(
         "Breakpoint hooking initialized ({} HW breakpoints)",
         bp_count
@@ -371,6 +392,7 @@ unsafe fn init_exception_handler() -> Result<(), BrkHookError> {
     Ok(())
 }
 
+/// Applies debug state (breakpoints) to all threads
 unsafe fn apply_debug_state(manager: &HookManager) -> Result<(), BrkHookError> {
     let task = mach_task_self();
     let mut state = ArmDebugState64::default();
@@ -418,27 +440,75 @@ unsafe fn apply_debug_state(manager: &HookManager) -> Result<(), BrkHookError> {
     Ok(())
 }
 
+/// Installs a hardware breakpoint hook at a relative virtual address (RVA)
+///
+/// # Arguments
+/// * `rva` - The relative virtual address to hook
+/// * `replacement` - The address of the replacement function
+///
+/// # Returns
+/// * `Result<Breakpoint, BrkHookError>` - The installed breakpoint or an error
 pub unsafe fn install(rva: usize, replacement: usize) -> Result<Breakpoint, BrkHookError> {
     let base = crate::memory::image::get_image_base(crate::config::TARGET_IMAGE_NAME)
         .map_err(|_| BrkHookError::InitFailed)?;
     install_at_address(base + rva, replacement)
 }
 
+/// Represents an installed hardware breakpoint
 pub struct Breakpoint {
+    /// The address being watched
     target: usize,
 }
 
 impl Breakpoint {
+    /// Removes the breakpoint
+    ///
+    /// # Returns
+    /// * `Result<(), BrkHookError>` - Result indicating success or failure
     pub fn remove(self) -> Result<(), BrkHookError> {
         unsafe { remove_at_address(self.target) }
     }
 
+    /// Returns the target address of the breakpoint
     #[inline]
     pub fn target(&self) -> usize {
         self.target
     }
+
+    /// Calls the original function by temporarily disabling the breakpoint
+    ///
+    /// # Type Parameters
+    /// * `T` - The function pointer type for the original function
+    /// * `F` - The callback closure type
+    /// * `R` - The return type
+    ///
+    /// # Arguments
+    /// * `callback` - A closure that takes the original function pointer and returns a result
+    ///
+    /// # Returns
+    /// * `R` - The result of the callback
+    #[inline]
+    pub unsafe fn call_original<T, F, R>(&self, callback: F) -> R
+    where
+        T: Copy,
+        F: FnOnce(T) -> R,
+    {
+        let _ = suspend_self();
+        let orig: T = std::mem::transmute_copy(&self.target);
+        let res = callback(orig);
+        let _ = resume_self();
+        res
+    }
 }
 
+/// Installs a hardware breakpoint hook at an absolute address
+///
+/// # Arguments
+/// * `target` - The absolute address to hook
+/// * `replacement` - The address of the replacement function
+///
+/// # Returns
+/// * `Result<Breakpoint, BrkHookError>` - The installed breakpoint or an error
 pub unsafe fn install_at_address(
     target: usize,
     replacement: usize,
@@ -454,11 +524,19 @@ pub unsafe fn install_at_address(
     manager.add_hook(target, replacement)?;
     apply_debug_state(&manager)?;
 
+    #[cfg(dev_release)]
     logger::info(&format!("BrkHook: {:#x} → {:#x}", target, replacement));
 
     Ok(Breakpoint { target })
 }
 
+/// Removes a hardware breakpoint hook at an absolute address
+///
+/// # Arguments
+/// * `target` - The absolute address where the hook is installed
+///
+/// # Returns
+/// * `Result<(), BrkHookError>` - Result indicating success or failure
 pub unsafe fn remove_at_address(target: usize) -> Result<(), BrkHookError> {
     let mut manager = MANAGER.lock();
     manager.remove_hook(target)?;
@@ -466,14 +544,28 @@ pub unsafe fn remove_at_address(target: usize) -> Result<(), BrkHookError> {
     Ok(())
 }
 
+/// Returns the number of active breakpoints
+///
+/// # Returns
+/// * `usize` - The count of active breakpoints
 pub fn active_count() -> usize {
     MANAGER.lock().active_count
 }
 
+/// Returns the maximum number of hardware breakpoints supported by the device
+///
+/// # Returns
+/// * `i32` - The maximum number of breakpoints
 pub fn max_breakpoints() -> i32 {
     MANAGER.lock().hw_breakpoints
 }
 
+/// Suspends the current thread (disables breakpoints for this thread)
+///
+/// Use this before calling the original function to avoid infinite recursion loops.
+///
+/// # Returns
+/// * `Result<(), BrkHookError>` - Result indicating success or failure
 pub unsafe fn suspend_self() -> Result<(), BrkHookError> {
     let thread = mach_thread_self();
     let state = ArmDebugState64::default();
@@ -492,6 +584,12 @@ pub unsafe fn suspend_self() -> Result<(), BrkHookError> {
     Ok(())
 }
 
+/// Resumes the current thread (re-enables breakpoints for this thread)
+///
+/// Use this after calling the original function to re-arm the breakpoints.
+///
+/// # Returns
+/// * `Result<(), BrkHookError>` - Result indicating success or failure
 pub unsafe fn resume_self() -> Result<(), BrkHookError> {
     let thread = mach_thread_self();
     let mut state = ArmDebugState64::default();

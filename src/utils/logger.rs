@@ -8,36 +8,48 @@ use crate::config;
 
 static INIT: Once = Once::new();
 
+#[cfg(dev_release)]
 fn ensure_initialized() {
     INIT.call_once(|| {
-        let level = if config::DEBUG {
-            LevelFilter::Debug
-        } else {
-            LevelFilter::Warn
-        };
-        OsLogger::new("com.rust_tweak")
-            .level_filter(level)
+        OsLogger::new("com.batch.alloy")
+            .level_filter(LevelFilter::Debug)
             .init()
             .ok();
     });
 }
 
+/// Logs an informational message
 pub fn info(msg: &str) {
-    ensure_initialized();
-    log::info!("[RGG] {}", msg);
+    #[cfg(dev_release)]
+    {
+        ensure_initialized();
+        log::info!("{}", msg);
+    }
 }
 
+/// Logs a debug message
 pub fn debug(msg: &str) {
-    ensure_initialized();
-    log::debug!("[RGG] {}", msg);
+    #[cfg(dev_release)]
+    {
+        ensure_initialized();
+        log::debug!("{}", msg);
+    }
 }
 
+/// Logs a warning message
 pub fn warning(msg: &str) {
-    ensure_initialized();
-    log::warn!("[RGG] {}", msg);
+    #[cfg(dev_release)]
+    {
+        ensure_initialized();
+        log::warn!("{}", msg);
+    }
 }
 
+/// Logs an error message
 pub fn error(msg: &str) {
-    ensure_initialized();
-    log::error!("[RGG] {}", msg);
+    #[cfg(dev_release)]
+    {
+        ensure_initialized();
+        log::error!("{}", msg);
+    }
 }

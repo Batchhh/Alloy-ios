@@ -1,30 +1,29 @@
 //! Memory scanning and pattern matching utilities
 
 use crate::memory::image;
+use crate::memory::info::protection;
 use crate::utils::logger;
-use mach2::{
-    kern_return::KERN_SUCCESS,
-    traps::mach_task_self,
-    vm::mach_vm_region,
-    vm_prot::VM_PROT_READ,
-    vm_region::{vm_region_basic_info_64, VM_REGION_BASIC_INFO_64},
-    vm_types::{mach_vm_address_t, mach_vm_size_t},
-};
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use std::collections::HashMap;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
+/// Errors that can occur during memory scanning
 pub enum ScanError {
+    /// The pattern string (IDA style or mask) is invalid
     #[error("Invalid pattern format: {0}")]
     InvalidPattern(String),
+    /// The specified pattern was not found in the target range
     #[error("Pattern not found")]
     NotFound,
+    /// The scan attempted to access invalid or protected memory
     #[error("Memory access violation at {0:#x}")]
     MemoryAccessViolation(usize),
+    /// The memory region definition is invalid
     #[error("Invalid memory region")]
     InvalidRegion,
+    /// Image lookup failed
     #[error("Image not found: {0}")]
     ImageNotFound(#[from] super::image::ImageError),
 }
@@ -32,6 +31,13 @@ pub enum ScanError {
 static SCAN_CACHE: Lazy<Mutex<HashMap<String, Vec<usize>>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
+/// Parses an IDA-style pattern string (e.g., "A1 ?? B2") into bytes and mask
+///
+/// # Arguments
+/// * `pattern` - The pattern string (e.g., "DE AD BE EF" or "DE ?? BE EF")
+///
+/// # Returns
+/// * `Result<(Vec<u8>, String), ScanError>` - A tuple containing the byte vector and the mask string
 pub fn parse_ida_pattern(pattern: &str) -> Result<(Vec<u8>, String), ScanError> {
     let parts: Vec<&str> = pattern.split_whitespace().collect();
     let mut bytes = Vec::new();
@@ -59,6 +65,16 @@ pub fn parse_ida_pattern(pattern: &str) -> Result<(Vec<u8>, String), ScanError> 
     Ok((bytes, mask))
 }
 
+/// Scans for a pattern within a memory range, returning all matches
+///
+/// # Arguments
+/// * `start` - The start address of the scan
+/// * `size` - The size of the memory range to scan
+/// * `pattern` - The byte sequence to find
+/// * `mask` - The mask string ('x' for match, '?' for wildcard)
+///
+/// # Returns
+/// * `Result<Vec<usize>, ScanError>` - A list of addresses where the pattern matches
 pub fn scan_pattern(
     start: usize,
     size: usize,
@@ -86,29 +102,15 @@ pub fn scan_pattern(
     Ok(results)
 }
 
-pub fn scan_pattern_first(
-    start: usize,
-    size: usize,
-    pattern: &[u8],
-    mask: &str,
-) -> Result<usize, ScanError> {
-    if pattern.is_empty() || pattern.len() != mask.len() {
-        return Err(ScanError::InvalidPattern(
-            "Pattern and mask length mismatch".to_string(),
-        ));
-    }
-    if !is_readable_memory(start, size) {
-        return Err(ScanError::MemoryAccessViolation(start));
-    }
-    let end = start + size - pattern.len();
-    for addr in start..=end {
-        if pattern_match(addr, pattern, mask) {
-            return Ok(addr);
-        }
-    }
-    Err(ScanError::NotFound)
-}
-
+/// Scans for an IDA-style pattern within a memory range, returning all matches
+///
+/// # Arguments
+/// * `start` - The start address
+/// * `size` - The size of the range
+/// * `ida_pattern` - The pattern string (e.g., "DE ?? BE EF")
+///
+/// # Returns
+/// * `Result<Vec<usize>, ScanError>` - A list of addresses or an error
 pub fn scan_ida_pattern(
     start: usize,
     size: usize,
@@ -118,15 +120,14 @@ pub fn scan_ida_pattern(
     scan_pattern(start, size, &bytes, &mask)
 }
 
-pub fn scan_ida_pattern_first(
-    start: usize,
-    size: usize,
-    ida_pattern: &str,
-) -> Result<usize, ScanError> {
-    let (bytes, mask) = parse_ida_pattern(ida_pattern)?;
-    scan_pattern_first(start, size, &bytes, &mask)
-}
-
+/// Scans an entire image for an IDA-style pattern, returning all matches
+///
+/// # Arguments
+/// * `image_name` - The name of the image to scan
+/// * `ida_pattern` - The pattern string
+///
+/// # Returns
+/// * `Result<Vec<usize>, ScanError>` - A list of addresses or an error
 pub fn scan_image(image_name: &str, ida_pattern: &str) -> Result<Vec<usize>, ScanError> {
     let base = image::get_image_base(image_name)?;
     let sections = get_image_sections(base)?;
@@ -143,36 +144,17 @@ pub fn scan_image(image_name: &str, ida_pattern: &str) -> Result<Vec<usize>, Sca
     Ok(all_results)
 }
 
-pub fn scan_image_first(image_name: &str, ida_pattern: &str) -> Result<usize, ScanError> {
-    let base = image::get_image_base(image_name)?;
-    let sections = get_image_sections(base)?;
-    let (bytes, mask) = parse_ida_pattern(ida_pattern)?;
-    for (section_start, section_size) in sections {
-        if let Ok(addr) = scan_pattern_first(section_start, section_size, &bytes, &mask) {
-            return Ok(addr);
-        }
-    }
-    Err(ScanError::NotFound)
-}
-
-pub fn aob_scan(
-    start: usize,
-    size: usize,
-    pattern: &[u8],
-    mask: &str,
-) -> Result<Vec<usize>, ScanError> {
-    scan_pattern(start, size, pattern, mask)
-}
-
-pub fn aob_scan_first(
-    start: usize,
-    size: usize,
-    pattern: &[u8],
-    mask: &str,
-) -> Result<usize, ScanError> {
-    scan_pattern_first(start, size, pattern, mask)
-}
-
+/// Scans for an IDA-style pattern with caching support
+///
+/// Subsequent calls with the same parameters will return cached results.
+///
+/// # Arguments
+/// * `start` - The start address
+/// * `size` - The scan size
+/// * `ida_pattern` - The pattern string
+///
+/// # Returns
+/// * `Result<Vec<usize>, ScanError>` - A list of addresses or an error
 pub fn scan_pattern_cached(
     start: usize,
     size: usize,
@@ -182,6 +164,7 @@ pub fn scan_pattern_cached(
     {
         let cache = SCAN_CACHE.lock();
         if let Some(cached) = cache.get(&cache_key) {
+            #[cfg(dev_release)]
             logger::info(&format!("Cache hit for pattern: {}", ida_pattern));
             return Ok(cached.clone());
         }
@@ -193,172 +176,49 @@ pub fn scan_pattern_cached(
     Ok(results)
 }
 
+/// Clears the scan cache
 pub fn clear_cache() {
     SCAN_CACHE.lock().clear();
+    #[cfg(dev_release)]
     logger::info("Scan cache cleared");
 }
 
-pub fn scan_asm<F>(start: usize, size: usize, build: F) -> Result<Vec<usize>, ScanError>
-where
-    F: FnOnce(
-        &mut jit_assembler::aarch64::Aarch64InstructionBuilder,
-    ) -> &mut jit_assembler::aarch64::Aarch64InstructionBuilder,
-{
-    use jit_assembler::{aarch64::Aarch64InstructionBuilder, common::InstructionBuilder};
-    let mut builder = Aarch64InstructionBuilder::new();
-    build(&mut builder);
-    let instructions = builder.instructions();
-    if instructions.is_empty() {
-        return Err(ScanError::InvalidPattern("Empty ASM pattern".into()));
-    }
-    let bytes: Vec<u8> = instructions
-        .iter()
-        .flat_map(|instr| instr.0.to_le_bytes())
-        .collect();
-    let mask = "x".repeat(bytes.len());
-    scan_pattern(start, size, &bytes, &mask)
-}
-
-pub fn scan_asm_first<F>(start: usize, size: usize, build: F) -> Result<usize, ScanError>
-where
-    F: FnOnce(
-        &mut jit_assembler::aarch64::Aarch64InstructionBuilder,
-    ) -> &mut jit_assembler::aarch64::Aarch64InstructionBuilder,
-{
-    use jit_assembler::{aarch64::Aarch64InstructionBuilder, common::InstructionBuilder};
-    let mut builder = Aarch64InstructionBuilder::new();
-    build(&mut builder);
-    let instructions = builder.instructions();
-    if instructions.is_empty() {
-        return Err(ScanError::InvalidPattern("Empty ASM pattern".into()));
-    }
-    let bytes: Vec<u8> = instructions
-        .iter()
-        .flat_map(|instr| instr.0.to_le_bytes())
-        .collect();
-    let mask = "x".repeat(bytes.len());
-    scan_pattern_first(start, size, &bytes, &mask)
-}
-
-pub fn scan_image_asm<F>(image_name: &str, build: F) -> Result<Vec<usize>, ScanError>
-where
-    F: FnOnce(
-        &mut jit_assembler::aarch64::Aarch64InstructionBuilder,
-    ) -> &mut jit_assembler::aarch64::Aarch64InstructionBuilder,
-{
-    use jit_assembler::{aarch64::Aarch64InstructionBuilder, common::InstructionBuilder};
-    let mut builder = Aarch64InstructionBuilder::new();
-    build(&mut builder);
-    let instructions = builder.instructions();
-    if instructions.is_empty() {
-        return Err(ScanError::InvalidPattern("Empty ASM pattern".into()));
-    }
-    let bytes: Vec<u8> = instructions
-        .iter()
-        .flat_map(|instr| instr.0.to_le_bytes())
-        .collect();
-    let mask = "x".repeat(bytes.len());
-    let base = image::get_image_base(image_name)?;
-    let sections = get_image_sections(base)?;
-    let mut all_results = Vec::new();
-    for (section_start, section_size) in sections {
-        if let Ok(mut results) = scan_pattern(section_start, section_size, &bytes, &mask) {
-            all_results.append(&mut results);
-        }
-    }
-    if all_results.is_empty() {
-        return Err(ScanError::NotFound);
-    }
-    Ok(all_results)
-}
-
-pub fn scan_image_asm_first<F>(image_name: &str, build: F) -> Result<usize, ScanError>
-where
-    F: FnOnce(
-        &mut jit_assembler::aarch64::Aarch64InstructionBuilder,
-    ) -> &mut jit_assembler::aarch64::Aarch64InstructionBuilder,
-{
-    use jit_assembler::{aarch64::Aarch64InstructionBuilder, common::InstructionBuilder};
-    let mut builder = Aarch64InstructionBuilder::new();
-    build(&mut builder);
-    let instructions = builder.instructions();
-    if instructions.is_empty() {
-        return Err(ScanError::InvalidPattern("Empty ASM pattern".into()));
-    }
-    let bytes: Vec<u8> = instructions
-        .iter()
-        .flat_map(|instr| instr.0.to_le_bytes())
-        .collect();
-    let mask = "x".repeat(bytes.len());
-    let base = image::get_image_base(image_name)?;
-    let sections = get_image_sections(base)?;
-    for (section_start, section_size) in sections {
-        if let Ok(addr) = scan_pattern_first(section_start, section_size, &bytes, &mask) {
-            return Ok(addr);
-        }
-    }
-    Err(ScanError::NotFound)
-}
-
+/// Checks if a memory region is readable
 fn is_readable_memory(addr: usize, size: usize) -> bool {
-    unsafe {
-        let task = mach_task_self();
-        let mut address = addr as mach_vm_address_t;
-        let mut region_size: mach_vm_size_t = 0;
-        let mut info = vm_region_basic_info_64::default();
-        let mut info_count = VM_REGION_BASIC_INFO_64;
-        let mut object_name = 0;
-        let kr = mach_vm_region(
-            task,
-            &mut address,
-            &mut region_size,
-            VM_REGION_BASIC_INFO_64,
-            &mut info as *mut _ as *mut i32,
-            &mut info_count as *mut _ as *mut u32,
-            &mut object_name,
-        );
-        if kr != KERN_SUCCESS {
-            return false;
+    match protection::get_region_info(addr) {
+        Ok(info) => {
+            let region_end = info.address + info.size;
+            if (addr + size) > region_end {
+                return false;
+            }
+            info.protection.is_readable()
         }
-        if address > addr as mach_vm_address_t {
-            return false;
-        }
-        let region_end = address + region_size;
-        let requested_end = (addr + size) as mach_vm_address_t;
-        if requested_end > region_end {
-            return false;
-        }
-        (info.protection & VM_PROT_READ) != 0
+        Err(_) => false,
     }
 }
 
+/// Retrieves the readable sections of a loaded image
 fn get_image_sections(base: usize) -> Result<Vec<(usize, usize)>, ScanError> {
     let mut sections = Vec::new();
-    unsafe {
-        let task = mach_task_self();
-        let mut address = base as mach_vm_address_t;
-        let end_address = address + 0x10000000;
-        while address < end_address {
-            let mut region_size: mach_vm_size_t = 0;
-            let mut info = vm_region_basic_info_64::default();
-            let mut info_count = VM_REGION_BASIC_INFO_64;
-            let mut object_name = 0;
-            let kr = mach_vm_region(
-                task,
-                &mut address,
-                &mut region_size,
-                VM_REGION_BASIC_INFO_64,
-                &mut info as *mut _ as *mut i32,
-                &mut info_count as *mut _ as *mut u32,
-                &mut object_name,
-            );
-            if kr != KERN_SUCCESS {
-                break;
+    let mut address = base;
+    let end_address = address + 0x10000000;
+
+    while address < end_address {
+        match protection::find_region(address) {
+            Ok(info) => {
+                if info.address >= end_address {
+                    break;
+                }
+                if info.protection.is_readable() {
+                    sections.push((info.address, info.size));
+                }
+                let next = info.address + info.size;
+                if next <= address {
+                    break;
+                }
+                address = next;
             }
-            if (info.protection & VM_PROT_READ) != 0 {
-                sections.push((address as usize, region_size as usize));
-            }
-            address += region_size;
+            Err(_) => break,
         }
     }
     if sections.is_empty() {
@@ -367,6 +227,7 @@ fn get_image_sections(base: usize) -> Result<Vec<(usize, usize)>, ScanError> {
     Ok(sections)
 }
 
+/// Checks if a pattern matches at a specific address
 #[inline]
 fn pattern_match(addr: usize, pattern: &[u8], mask: &str) -> bool {
     unsafe {
