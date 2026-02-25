@@ -21,14 +21,6 @@ ARCHS = arm64
 FINALPACKAGE = 1
 THEOS_DYLIB := .theos/obj/arm64/alloy.dylib 
 
-# Load environment from .env file (if exists)
--include .env
-
-# Device config (defaults, override in .env)
-DEVICE_IP ?= 1.1.1
-DEVICE_USER ?= mobile
-DEVICE_PASS ?= 1
-
 include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = alloy
