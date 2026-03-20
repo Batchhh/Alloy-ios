@@ -1,9 +1,9 @@
 //! Floating button
 use objc2::rc::Retained;
-use objc2::{msg_send, ClassType, MainThreadOnly};
-use objc2_core_foundation::{CGAffineTransform, CGRect, CGSize};
-use objc2_foundation::{MainThreadMarker, NSString};
-use objc2_ui_kit::{UIButton, UIColor, UIControlState, UIFont};
+use objc2::{msg_send, ClassType};
+use objc2_core_foundation::{CGAffineTransform, CGRect};
+use objc2_foundation::MainThreadMarker;
+use objc2_ui_kit::{UIButton, UIColor, UIControlState};
 
 use crate::ui::theme::Theme;
 use crate::ui::utils::animations;
@@ -54,6 +54,7 @@ pub fn create_toggle_button(frame: CGRect, mtm: MainThreadMarker) -> Retained<UI
         icon_layer.setLineJoin(objc2_quartz_core::kCALineJoinRound);
 
         let color = Theme::text();
+        #[allow(clippy::missing_transmute_annotations)]
         icon_layer.setStrokeColor(Some(std::mem::transmute(color.CGColor())));
     }
 
@@ -85,15 +86,14 @@ pub fn create_toggle_button(frame: CGRect, mtm: MainThreadMarker) -> Retained<UI
 
     unsafe {
         path.applyTransform(transform);
+        #[allow(clippy::missing_transmute_annotations)]
         icon_layer.setPath(Some(std::mem::transmute(path.CGPath())));
     }
 
     layer.addSublayer(&icon_layer);
 
-    unsafe {
-        button.setTitle_forState(None, UIControlState::Normal);
-        button.setImage_forState(None, UIControlState::Normal);
-    }
+    button.setTitle_forState(None, UIControlState::Normal);
+    button.setImage_forState(None, UIControlState::Normal);
     button.setUserInteractionEnabled(true);
 
     // Initial State (Scaled Down)

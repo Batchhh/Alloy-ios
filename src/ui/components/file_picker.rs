@@ -3,7 +3,7 @@ use dispatch::Queue;
 use objc2::{
     define_class, msg_send,
     rc::Retained,
-    runtime::{AnyObject, Bool, Class, NSObject, NSObjectProtocol},
+    runtime::{AnyClass, AnyObject, Bool, NSObject, NSObjectProtocol},
     ClassType, MainThreadOnly,
 };
 use objc2_foundation::{MainThreadMarker, NSArray, NSURL};
@@ -110,10 +110,10 @@ where
                 let delegate = FolderPickerDelegate::new(mtm);
                 DELEGATE.with(|d| *d.borrow_mut() = Some(delegate.clone()));
 
-                let picker_cls = Class::get(c"UIDocumentPickerViewController")
+                let picker_cls = AnyClass::get(c"UIDocumentPickerViewController")
                     .expect("UIDocumentPickerViewController class not found");
 
-                let ut_type_cls = Class::get(c"UTType").expect("UTType class not found");
+                let ut_type_cls = AnyClass::get(c"UTType").expect("UTType class not found");
                 let folder_id = objc2_foundation::NSString::from_str("public.folder");
                 let folder_type: *mut AnyObject =
                     msg_send![ut_type_cls, typeWithIdentifier: &*folder_id];
@@ -128,9 +128,11 @@ where
                 let _: () = msg_send![picker, setAllowsMultipleSelection: Bool::NO];
 
                 let app = UIApplication::sharedApplication(mtm);
+                #[allow(deprecated)]
                 let window_opt = if let Some(w) = app.keyWindow() {
                     Some(w)
                 } else {
+                    #[allow(deprecated)]
                     let windows = app.windows();
                     if windows.count() > 0 {
                         Some(windows.objectAtIndex(0))
@@ -145,7 +147,7 @@ where
                             &root,
                             presentViewController: picker,
                             animated: true,
-                            completion: 0 as *const c_void
+                            completion: std::ptr::null::<c_void>()
                         ];
                     }
                 }

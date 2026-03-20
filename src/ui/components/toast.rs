@@ -1,24 +1,18 @@
 use dispatch::Queue;
 use objc2::rc::Retained;
-use objc2::runtime::{AnyObject, Bool};
-use objc2::{msg_send, msg_send_id, ClassType, MainThreadOnly};
+use objc2::{msg_send, ClassType};
 use objc2_core_foundation::{CGAffineTransform, CGPoint, CGRect, CGSize};
 use objc2_foundation::{MainThreadMarker, NSString};
-use objc2_quartz_core::{
-    CABasicAnimation, CALayer, CAMediaTiming, CAMediaTimingFunction, CAShapeLayer,
-};
-use objc2_ui_kit::{
-    UIActivityIndicatorView, UIActivityIndicatorViewStyle, UIApplication, UIBezierPath, UIColor,
-    UIFont, UIImage, UIImageView, UILabel, UIView,
-};
+use objc2_quartz_core::CAShapeLayer;
+use objc2_ui_kit::{UIColor, UIFont, UILabel, UIView};
 use std::cell::RefCell;
-use std::ffi::c_void;
 use std::time::Duration;
 
 use crate::ui::assets::icons;
 use crate::ui::theme::Theme;
 use crate::ui::utils::animations;
 use crate::ui::utils::wrappers::{UIBlurEffect, UIVisualEffectView};
+#[cfg(dev_release)]
 use crate::utils::logger;
 
 thread_local! {
@@ -227,11 +221,7 @@ fn present_toast(config: ToastConfig) {
                         15.0
                     },
                 )));
-                text_label.setTextAlignment(if matches!(toast_type, ToastType::Welcome) {
-                    objc2_ui_kit::NSTextAlignment::Left
-                } else {
-                    objc2_ui_kit::NSTextAlignment::Left
-                });
+                text_label.setTextAlignment(objc2_ui_kit::NSTextAlignment::Left);
                 text_label.setNumberOfLines(1);
                 text_label.setAlpha(0.0);
                 container.addSubview(&text_label);
@@ -326,10 +316,18 @@ fn present_toast(config: ToastConfig) {
                                         e.layer().setCornerRadius(er);
                                         t.setAlpha(1.0);
                                         d.iter().for_each(|dot| dot.setAlpha(1.0));
-                                        desc.as_ref().map(|d| d.setAlpha(1.0));
-                                        sd.as_ref().map(|s| s.setAlpha(1.0));
-                                        wi.as_ref().map(|w| w.setAlpha(1.0));
-                                        vb.as_ref().map(|v| v.setAlpha(1.0));
+                                        if let Some(d) = desc.as_ref() {
+                                            d.setAlpha(1.0)
+                                        }
+                                        if let Some(s) = sd.as_ref() {
+                                            s.setAlpha(1.0)
+                                        }
+                                        if let Some(w) = wi.as_ref() {
+                                            w.setAlpha(1.0)
+                                        }
+                                        if let Some(v) = vb.as_ref() {
+                                            v.setAlpha(1.0)
+                                        }
                                     }
                                 },
                                 None::<fn(bool)>,
@@ -354,10 +352,12 @@ fn present_toast(config: ToastConfig) {
                                     None::<fn(bool)>,
                                 );
                             });
-                            sl.as_ref()
-                                .map(|l| animations::animate_stroke_end(l, 0.5, false));
-                            wl.as_ref()
-                                .map(|l| animations::animate_stroke_end(l, 1.2, true));
+                            if let Some(l) = sl.as_ref() {
+                                animations::animate_stroke_end(l, 0.5, false)
+                            }
+                            if let Some(l) = wl.as_ref() {
+                                animations::animate_stroke_end(l, 1.2, true)
+                            }
                         }
                     }),
                 );
@@ -374,8 +374,7 @@ fn present_toast(config: ToastConfig) {
                 };
 
                 Queue::main().exec_after(Duration::from_millis(dur), move || {
-                    let container =
-                        unsafe { Retained::<UIView>::from_raw(c_raw as *mut UIView).unwrap() };
+                    let container = Retained::<UIView>::from_raw(c_raw as *mut UIView).unwrap();
                     let cf = container.clone();
 
                     animations::animate_with_delay(
@@ -438,15 +437,16 @@ fn present_toast(config: ToastConfig) {
                                                     let c = c4.clone();
                                                     let of = of.clone();
                                                     move |_| {
-                                                        unsafe {
-                                                            c.removeFromSuperview();
-                                                        }
+                                                        c.removeFromSuperview();
                                                         ACTIVE_TOAST
                                                             .with(|t| *t.borrow_mut() = None);
-                                                        of.lock()
+                                                        if let Some(cb) = of
+                                                            .lock()
                                                             .ok()
                                                             .and_then(|mut l| l.take())
-                                                            .map(|cb| cb());
+                                                        {
+                                                            cb()
+                                                        }
                                                     }
                                                 }),
                                             );
@@ -470,6 +470,7 @@ fn create_container_view(
     let c = UIView::new(mtm);
     c.setFrame(frame);
     let l = c.layer();
+    #[allow(clippy::missing_transmute_annotations)]
     l.setShadowColor(Some(unsafe {
         std::mem::transmute(UIColor::blackColor().CGColor())
     }));
@@ -534,12 +535,14 @@ fn create_status_icon(
         ToastStatus::Error => UIColor::systemRedColor(),
         ToastStatus::Info => Theme::text(),
     };
+    #[allow(clippy::missing_transmute_annotations)]
     l.setStrokeColor(Some(unsafe { std::mem::transmute(col.CGColor()) }));
     let path = match status {
         ToastStatus::Success => icons::success_path(),
         ToastStatus::Error => icons::error_path(),
         ToastStatus::Info => icons::info_path(),
     };
+    #[allow(clippy::missing_transmute_annotations)]
     l.setPath(Some(unsafe { std::mem::transmute(path.CGPath()) }));
     l.setStrokeEnd(0.0);
     ic.layer().addSublayer(&l);
@@ -563,9 +566,11 @@ fn create_welcome_icon(
         l.setLineCap(objc2_quartz_core::kCALineCapRound);
         l.setLineJoin(objc2_quartz_core::kCALineJoinRound);
     }
+    #[allow(clippy::missing_transmute_annotations)]
     l.setStrokeColor(Some(unsafe {
         std::mem::transmute(Theme::accent().CGColor())
     }));
+    #[allow(clippy::missing_transmute_annotations)]
     l.setPath(Some(unsafe {
         std::mem::transmute(icons::dragon_head_path().CGPath())
     }));

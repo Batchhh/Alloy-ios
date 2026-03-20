@@ -3,12 +3,13 @@
 use super::components::create_toggle_button;
 use super::menu::create_menu_view;
 use crate::ui::utils::animations;
+#[cfg(dev_release)]
 use crate::utils::logger;
 use dispatch::Queue;
 use objc2::{
     define_class, msg_send,
     rc::{Allocated, Retained},
-    runtime::{AnyObject, Class, NSObject},
+    runtime::{AnyClass, AnyObject, NSObject},
     sel, ClassType,
 };
 use objc2_core_foundation::{CGAffineTransform, CGPoint, CGRect, CGSize};
@@ -34,7 +35,6 @@ define_class!(
 
         #[unsafe(method(handlePan:))]
         fn handle_pan(&self, recognizer: &UIPanGestureRecognizer) {
-            use block2::RcBlock;
             let state = recognizer.state();
             if let Some(view) = recognizer.view() {
                 let translation = recognizer.translationInView(Some(&view));
@@ -49,7 +49,7 @@ define_class!(
                         0.2,
                         0.7,
                         0.5,
-                        move || unsafe {
+                        move || {
                             view_ptr.setTransform(CGAffineTransform {
                                 a: 1.15,
                                 b: 0.0,
@@ -108,7 +108,7 @@ define_class!(
                             0.3,
                             0.8,
                             0.5,
-                            move || unsafe {
+                            move || {
                                 view_ptr.setTransform(CGAffineTransform {
                                     a: 1.0,
                                     b: 0.0,
@@ -144,6 +144,7 @@ thread_local! {
 }
 
 /// Helper function to find the key window or the first available window
+#[allow(deprecated)]
 pub fn get_window(mtm: MainThreadMarker) -> Option<Retained<UIWindow>> {
     let app = UIApplication::sharedApplication(mtm);
     app.keyWindow().or_else(|| {
@@ -164,7 +165,7 @@ pub fn init_overlay() {
     let mtm = MainThreadMarker::new().expect("init_overlay must be called on the main thread");
     #[cfg(dev_release)]
     logger::info("Creating native iOS overlay...");
-    let app = UIApplication::sharedApplication(mtm);
+    let _app = UIApplication::sharedApplication(mtm);
 
     let window_opt = get_window(mtm);
 
@@ -239,32 +240,29 @@ fn init_floating_button(window: Retained<UIWindow>, mtm: MainThreadMarker) {
     MENU_HANDLER.with(|h| *h.borrow_mut() = Some(handler));
 
     // Scale animation
-    unsafe {
-        // Initial Position: Center of Screen
-        let window_bounds = window.bounds();
-        let center_x = window_bounds.size.width / 2.0;
-        let center_y = window_bounds.size.height / 2.0;
-        toggle_btn.setCenter(CGPoint::new(center_x, center_y));
+    // Initial Position: Center of Screen
+    let window_bounds = window.bounds();
+    let center_x = window_bounds.size.width / 2.0;
+    let center_y = window_bounds.size.height / 2.0;
+    toggle_btn.setCenter(CGPoint::new(center_x, center_y));
 
-        window.addSubview(&toggle_btn);
+    window.addSubview(&toggle_btn);
 
-        use block2::RcBlock;
-        let btn_ptr = toggle_btn.clone();
+    let btn_ptr = toggle_btn.clone();
 
-        // Target Position: Right side, 50% inside screen (half visible)
-        let target_x = window_bounds.size.width; // Half visible on right edge
-        let target_y = center_y;
+    // Target Position: Right side, 50% inside screen (half visible)
+    let target_x = window_bounds.size.width; // Half visible on right edge
+    let target_y = center_y;
 
-        animations::animate_spring(
-            1.5,
-            0.8,
-            0.0,
-            move || {
-                btn_ptr.setCenter(CGPoint::new(target_x, target_y));
-            },
-            None::<fn(bool)>,
-        );
-    }
+    animations::animate_spring(
+        1.5,
+        0.8,
+        0.0,
+        move || {
+            btn_ptr.setCenter(CGPoint::new(target_x, target_y));
+        },
+        None::<fn(bool)>,
+    );
 
     TOGGLE_BTN.with(|b| *b.borrow_mut() = Some(toggle_btn));
 }
@@ -337,13 +335,13 @@ pub fn alert(title: &str, text: &str, with_ok: bool) {
     let text = text.to_string();
     let title = title.to_string();
     Queue::main().exec_async(move || {
-        if let Some(mtm) = MainThreadMarker::new() {
+        if let Some(_mtm) = MainThreadMarker::new() {
             unsafe {
                 let title = NSString::from_str(&title);
                 let message: Retained<NSString> = NSString::from_str(&text);
 
                 let alert_cls =
-                    Class::get(c"UIAlertController").expect("UIAlertController class not found");
+                    AnyClass::get(c"UIAlertController").expect("UIAlertController class not found");
                 let alert: Retained<AnyObject> = msg_send![
                     alert_cls,
                     alertControllerWithTitle: &*title,
@@ -353,13 +351,13 @@ pub fn alert(title: &str, text: &str, with_ok: bool) {
 
                 if with_ok {
                     let action_cls =
-                        Class::get(c"UIAlertAction").expect("UIAlertAction class not found");
+                        AnyClass::get(c"UIAlertAction").expect("UIAlertAction class not found");
                     let ok_title = NSString::from_str("OK");
                     let action: Retained<AnyObject> = msg_send![
                         action_cls,
                         actionWithTitle: &*ok_title,
                         style: 0usize, // UIAlertActionStyleDefault
-                        handler: 0 as *const std::ffi::c_void
+                        handler: std::ptr::null::<std::ffi::c_void>()
                     ];
 
                     let _: () = msg_send![&alert, addAction: &*action];
@@ -367,7 +365,7 @@ pub fn alert(title: &str, text: &str, with_ok: bool) {
 
                 let dismissed = ACTIVE_ALERT.with(|a| {
                    if let Some(old) = a.borrow().as_ref() {
-                       let _: () = msg_send![old, dismissViewControllerAnimated: false completion: 0 as *const std::ffi::c_void];
+                       let _: () = msg_send![old, dismissViewControllerAnimated: false, completion: std::ptr::null::<std::ffi::c_void>()];
                        true
                    } else {
                        false
@@ -379,18 +377,16 @@ pub fn alert(title: &str, text: &str, with_ok: bool) {
                 let alert_ptr = Retained::into_raw(alert) as usize;
 
                 let present = move || {
-                    let alert = unsafe { Retained::from_raw(alert_ptr as *mut AnyObject).unwrap() };
+                    let alert = Retained::from_raw(alert_ptr as *mut AnyObject).unwrap();
                     if let Some(mtm) = MainThreadMarker::new() {
                         if let Some(window) = get_window(mtm) {
                             if let Some(root) = window.rootViewController() {
-                                unsafe {
-                                    let _: () = msg_send![
-                                        &root,
-                                        presentViewController: &*alert,
-                                        animated: true,
-                                        completion: 0 as *const std::ffi::c_void
-                                    ];
-                                }
+                                let _: () = msg_send![
+                                    &root,
+                                    presentViewController: &*alert,
+                                    animated: true,
+                                    completion: std::ptr::null::<std::ffi::c_void>()
+                                ];
                             }
                         }
                     }

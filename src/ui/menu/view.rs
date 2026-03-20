@@ -1,18 +1,14 @@
 //! View
 
-use block2::RcBlock;
 use objc2::rc::{Allocated, Retained};
-use objc2::runtime::{Bool, Class};
 use objc2::{define_class, msg_send, sel, ClassType, MainThreadOnly};
-use objc2_core_foundation::{CGAffineTransform, CGFloat, CGPoint, CGRect, CGSize};
+use objc2_core_foundation::{CGAffineTransform, CGPoint, CGRect, CGSize};
 use objc2_foundation::{MainThreadMarker, NSObject, NSString};
 use objc2_ui_kit::{
     UIButton, UIControlEvents, UIControlState, UIPanGestureRecognizer, UIScrollView,
     UITapGestureRecognizer, UIView,
 };
 use std::cell::RefCell;
-use std::ffi::CStr;
-use std::sync::Arc;
 
 use super::handler::{MenuActionHandler, ACTION_HANDLER};
 use super::items::{
@@ -20,17 +16,18 @@ use super::items::{
     create_text_input_item, create_toggle_item,
 };
 use super::registry::{MenuItem, REGISTRY, TAB_REGISTRY};
-use super::utils::{hex_to_color, trigger_feedback};
+use super::utils::hex_to_color;
 use crate::ui::components::{create_label, create_section_header};
 use crate::ui::pref::Preferences;
-use crate::ui::theme::{Theme, ThemeVariant};
+use crate::ui::theme::Theme;
 use crate::ui::utils::animations;
 use crate::ui::utils::wrappers::{CAGradientLayer, UIBlurEffect, UIVisualEffectView};
 
 thread_local! {
-    static SCROLL_VIEW: RefCell<Option<Retained<UIScrollView>>> = RefCell::new(None);
-    static DROPDOWN_CALLBACK: RefCell<Option<Box<dyn Fn(i32)>>> = RefCell::new(None);
-    static DROPDOWN_DELEGATE: RefCell<Option<Retained<DropdownDelegate>>> = RefCell::new(None);
+    static SCROLL_VIEW: RefCell<Option<Retained<UIScrollView>>> = const { RefCell::new(None) };
+    #[allow(clippy::type_complexity)]
+    static DROPDOWN_CALLBACK: RefCell<Option<Box<dyn Fn(i32)>>> = const { RefCell::new(None) };
+    static DROPDOWN_DELEGATE: RefCell<Option<Retained<DropdownDelegate>>> = const { RefCell::new(None) };
 }
 
 define_class!(
@@ -57,12 +54,14 @@ define_class!(
         #[unsafe(method(dismissOverlay))]
         fn dismiss_overlay(&self) {
             let mtm = unsafe { MainThreadMarker::new_unchecked() };
-            let app = unsafe { objc2_ui_kit::UIApplication::sharedApplication(mtm) };
+            #[allow(deprecated)]
+            let app = objc2_ui_kit::UIApplication::sharedApplication(mtm);
+            #[allow(deprecated)]
             if let Some(window) = app.keyWindow() {
                 if let Some(overlay) = window.viewWithTag(9999) {
                     let overlay_ptr = overlay.clone();
-                    animations::animate(0.2, move || unsafe { overlay_ptr.setAlpha(0.0); },
-                        Some(move |_: bool| unsafe { overlay.removeFromSuperview(); }));
+                    animations::animate(0.2, move || { overlay_ptr.setAlpha(0.0); },
+                        Some(move |_: bool| { overlay.removeFromSuperview(); }));
                 }
             }
         }
@@ -70,14 +69,14 @@ define_class!(
 );
 
 impl DropdownDelegate {
-    fn new(mtm: MainThreadMarker) -> Retained<Self> {
+    fn new(_mtm: MainThreadMarker) -> Retained<Self> {
         unsafe { msg_send![DropdownDelegate::class(), new] }
     }
 }
 
 // Helper: create gesture recognizer
 fn create_gesture<T: ClassType>(
-    mtm: MainThreadMarker,
+    _mtm: MainThreadMarker,
     target: &impl objc2::Message,
     action: objc2::runtime::Sel,
 ) -> Retained<T> {
@@ -107,21 +106,17 @@ fn create_btn(mtm: MainThreadMarker, frame: CGRect) -> Retained<UIButton> {
 
 pub fn create_menu_view(frame: CGRect, mtm: MainThreadMarker) -> Retained<UIView> {
     let menu = UIView::initWithFrame(UIView::alloc(mtm), frame);
-    unsafe {
-        menu.setBackgroundColor(Some(&objc2_ui_kit::UIColor::clearColor()));
-    }
+    menu.setBackgroundColor(Some(&objc2_ui_kit::UIColor::clearColor()));
 
     // Gradient
     let gradient = CAGradientLayer::new();
     gradient.setFrame(menu.bounds());
-    unsafe {
-        let colors = objc2_foundation::NSArray::from_retained_slice(&[
-            Retained::cast::<objc2_foundation::NSObject>(Theme::gradient_start()),
-            Retained::cast::<objc2_foundation::NSObject>(Theme::gradient_end()),
-        ]);
-        gradient.setColors(&*colors);
-        menu.layer().insertSublayer_atIndex(&gradient, 0);
-    }
+    let colors = objc2_foundation::NSArray::from_retained_slice(&[
+        unsafe { Retained::cast_unchecked::<objc2_foundation::NSObject>(Theme::gradient_start()) },
+        unsafe { Retained::cast_unchecked::<objc2_foundation::NSObject>(Theme::gradient_end()) },
+    ]);
+    gradient.setColors(&colors);
+    menu.layer().insertSublayer_atIndex(&gradient, 0);
 
     // Blur effect
     let blur_effect = unsafe {
@@ -199,9 +194,7 @@ pub fn create_menu_view(frame: CGRect, mtm: MainThreadMarker) -> Retained<UIView
                 CGSize::new(frame.size.width, 0.5),
             ),
         );
-        unsafe {
-            separator.setBackgroundColor(Some(&Theme::menu_border()));
-        }
+        separator.setBackgroundColor(Some(&Theme::menu_border()));
         tab_bar.addSubview(&separator);
 
         // Indicator
@@ -213,10 +206,8 @@ pub fn create_menu_view(frame: CGRect, mtm: MainThreadMarker) -> Retained<UIView
                 CGSize::new(btn_width, 3.0),
             ),
         );
-        unsafe {
-            indicator.setBackgroundColor(Some(&Theme::accent()));
-            indicator.layer().setCornerRadius(1.5);
-        }
+        indicator.setBackgroundColor(Some(&Theme::accent()));
+        indicator.layer().setCornerRadius(1.5);
         indicator.setTag(888);
         tab_bar.addSubview(&indicator);
 
@@ -300,8 +291,8 @@ pub fn render_content(page_id: i32) {
                     for i in 0..subviews.count() {
                         let subview = subviews.objectAtIndex(i);
                         let tag = subview.tag();
-                        if tag >= 400 && tag < 500 {
-                            let btn: Retained<UIButton> = unsafe { Retained::cast(subview) };
+                        if (400..500).contains(&tag) {
+                            let btn: Retained<UIButton> = unsafe { Retained::cast_unchecked(subview) };
                             update_tab_button(&btn, tag == (400 + page_id) as isize);
                         }
                     }
@@ -313,7 +304,7 @@ pub fn render_content(page_id: i32) {
                             let width = tab_bar.frame().size.width / tabs.len() as f64;
                             let new_x = width * index as f64;
                             let indicator = indicator.clone();
-                            animations::animate(0.3, move || unsafe {
+                            animations::animate(0.3, move || {
                                 let mut frame = indicator.frame();
                                 frame.origin.x = new_x;
                                 indicator.setFrame(frame);
@@ -465,7 +456,7 @@ pub fn update_toggle_ui(sender: &UIButton, selected: bool) {
             0.4,
             0.6,
             0.8,
-            move || unsafe {
+            move || {
                 bg.setBackgroundColor(Some(&*if selected {
                     Theme::accent()
                 } else {
@@ -502,9 +493,7 @@ fn scale_transform(scale: f64) -> CGAffineTransform {
 pub fn show_menu(menu: &UIView) {
     menu.setHidden(false);
     menu.setAlpha(0.0);
-    unsafe {
-        menu.setTransform(scale_transform(0.8));
-    }
+    menu.setTransform(scale_transform(0.8));
 
     let menu_ptr: Retained<UIView> = unsafe {
         let ptr: *mut UIView = msg_send![menu, retain];
@@ -514,7 +503,7 @@ pub fn show_menu(menu: &UIView) {
         0.3,
         0.7,
         0.0,
-        move || unsafe {
+        move || {
             menu_ptr.setAlpha(1.0);
             menu_ptr.setTransform(scale_transform(1.0));
         },
@@ -530,11 +519,11 @@ pub fn hide_menu(menu: &UIView) {
     let menu_ptr_anim = menu_ptr.clone();
     animations::animate(
         0.2,
-        move || unsafe {
+        move || {
             menu_ptr_anim.setAlpha(0.0);
             menu_ptr_anim.setTransform(scale_transform(0.8));
         },
-        Some(move |finished: bool| unsafe {
+        Some(move |finished: bool| {
             if finished {
                 menu_ptr.setHidden(true);
             }
@@ -543,7 +532,7 @@ pub fn hide_menu(menu: &UIView) {
 }
 
 pub fn show_dropdown_selection(
-    title: &str,
+    _title: &str,
     options: Vec<String>,
     current_idx: i32,
     callback: impl Fn(i32) + 'static,
@@ -559,9 +548,12 @@ pub fn show_dropdown_selection(
         borrow.as_ref().unwrap().clone()
     });
 
-    let window = unsafe {
+    let window = {
+        #[allow(deprecated)]
         let app = objc2_ui_kit::UIApplication::sharedApplication(mtm);
-        app.keyWindow().unwrap()
+        #[allow(deprecated)]
+        let w = app.keyWindow().unwrap();
+        w
     };
     let bounds = window.bounds();
 
@@ -661,6 +653,7 @@ pub fn show_dropdown_selection(
             btn.setContentHorizontalAlignment(
                 objc2_ui_kit::UIControlContentHorizontalAlignment::Left,
             );
+            #[allow(deprecated)]
             btn.setContentEdgeInsets(objc2_ui_kit::UIEdgeInsets {
                 top: 0.0,
                 left: 16.0,
@@ -684,9 +677,7 @@ pub fn show_dropdown_selection(
                     CGSize::new(container_width - 32.0, 0.5),
                 ),
             );
-            unsafe {
-                sep.setBackgroundColor(Some(&Theme::container_border()));
-            }
+            sep.setBackgroundColor(Some(&Theme::container_border()));
             scroll_view.addSubview(&sep);
         }
         scroll_view.addSubview(&btn);
@@ -702,13 +693,11 @@ pub fn show_dropdown_selection(
 
     // Animate in
     overlay.setAlpha(0.0);
-    unsafe {
-        container.setTransform(scale_transform(0.8));
-    }
+    container.setTransform(scale_transform(0.8));
     let container_ptr = container.clone();
     animations::animate(
         0.2,
-        move || unsafe {
+        move || {
             overlay.setAlpha(1.0);
             container_ptr.setTransform(scale_transform(1.0));
         },

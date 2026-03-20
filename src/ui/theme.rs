@@ -208,30 +208,22 @@ impl Theme {
 
     /// Primary text
     pub fn text() -> Retained<UIColor> {
-        match Self::current() {
-            _ => UIColor::colorWithRed_green_blue_alpha(0.98, 0.98, 1.0, 1.0),
-        }
+        UIColor::colorWithRed_green_blue_alpha(0.98, 0.98, 1.0, 1.0)
     }
 
     /// Secondary text
     pub fn text_secondary() -> Retained<UIColor> {
-        match Self::current() {
-            _ => UIColor::colorWithRed_green_blue_alpha(0.6, 0.6, 0.65, 1.0),
-        }
+        UIColor::colorWithRed_green_blue_alpha(0.6, 0.6, 0.65, 1.0)
     }
 
     /// Tertiary text
     pub fn text_tertiary() -> Retained<UIColor> {
-        match Self::current() {
-            _ => UIColor::colorWithRed_green_blue_alpha(0.4, 0.4, 0.45, 1.0),
-        }
+        UIColor::colorWithRed_green_blue_alpha(0.4, 0.4, 0.45, 1.0)
     }
 
     /// Toggle off state
     pub fn toggle_off() -> Retained<UIColor> {
-        match Self::current() {
-            _ => UIColor::colorWithRed_green_blue_alpha(0.2, 0.2, 0.22, 1.0),
-        }
+        UIColor::colorWithRed_green_blue_alpha(0.2, 0.2, 0.22, 1.0)
     }
 
     /// Toggle knob color when active
@@ -241,51 +233,37 @@ impl Theme {
 
     /// Toggle knob when off
     pub fn knob_off() -> Retained<UIColor> {
-        match Self::current() {
-            _ => UIColor::colorWithRed_green_blue_alpha(0.55, 0.55, 0.6, 1.0),
-        }
+        UIColor::colorWithRed_green_blue_alpha(0.55, 0.55, 0.6, 1.0)
     }
 
     /// Slider inactive track
     pub fn slider_track_inactive() -> Retained<UIColor> {
-        match Self::current() {
-            _ => UIColor::colorWithRed_green_blue_alpha(1.0, 1.0, 1.0, 0.08),
-        }
+        UIColor::colorWithRed_green_blue_alpha(1.0, 1.0, 1.0, 0.08)
     }
 
     /// Container background
     pub fn container_background() -> Retained<UIColor> {
-        match Self::current() {
-            _ => UIColor::colorWithRed_green_blue_alpha(1.0, 1.0, 1.0, 0.04),
-        }
+        UIColor::colorWithRed_green_blue_alpha(1.0, 1.0, 1.0, 0.04)
     }
 
     /// Container on hover/active
     pub fn container_active() -> Retained<UIColor> {
-        match Self::current() {
-            _ => UIColor::colorWithRed_green_blue_alpha(1.0, 1.0, 1.0, 0.08),
-        }
+        UIColor::colorWithRed_green_blue_alpha(1.0, 1.0, 1.0, 0.08)
     }
 
     /// Container border
     pub fn container_border() -> Retained<UIColor> {
-        match Self::current() {
-            _ => UIColor::colorWithRed_green_blue_alpha(1.0, 1.0, 1.0, 0.06),
-        }
+        UIColor::colorWithRed_green_blue_alpha(1.0, 1.0, 1.0, 0.06)
     }
 
     /// Menu window border
     pub fn menu_border() -> Retained<UIColor> {
-        match Self::current() {
-            _ => UIColor::colorWithRed_green_blue_alpha(1.0, 1.0, 1.0, 0.08),
-        }
+        UIColor::colorWithRed_green_blue_alpha(1.0, 1.0, 1.0, 0.08)
     }
 
     /// Toggle button background
     pub fn toggle_button_background() -> Retained<UIColor> {
-        match Self::current() {
-            _ => UIColor::colorWithRed_green_blue_alpha(0.08, 0.08, 0.1, 0.85),
-        }
+        UIColor::colorWithRed_green_blue_alpha(0.08, 0.08, 0.1, 0.85)
     }
 
     /// Toggle button border
@@ -321,9 +299,7 @@ impl Theme {
 
     /// Input background
     pub fn input_background() -> Retained<UIColor> {
-        match Self::current() {
-            _ => UIColor::colorWithRed_green_blue_alpha(0.0, 0.0, 0.0, 0.25),
-        }
+        UIColor::colorWithRed_green_blue_alpha(0.0, 0.0, 0.0, 0.25)
     }
 
     /// Input border

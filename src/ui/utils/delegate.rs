@@ -3,7 +3,7 @@ use objc2::{
     define_class, msg_send,
     rc::Retained,
     runtime::{NSObject, NSObjectProtocol},
-    sel, ClassType, MainThreadOnly,
+    ClassType, MainThreadOnly,
 };
 use objc2_foundation::MainThreadMarker;
 use objc2_ui_kit::{UITextField, UITextFieldDelegate, UIView};
@@ -26,8 +26,8 @@ define_class!(
         fn clear_text(&self, sender: &UIView) {
              let mut current_view: Option<Retained<UIView>> = sender.superview();
              while let Some(view) = current_view {
-                 if view.is_kind_of::<UITextField>() {
-                     let tf: Retained<UITextField> = unsafe { Retained::cast(view) };
+                 if view.isKindOfClass(UITextField::class()) {
+                     let tf: Retained<UITextField> = unsafe { Retained::cast_unchecked(view) };
                      tf.setText(Some(&objc2_foundation::NSString::new()));
                      break;
                  }
@@ -48,7 +48,7 @@ impl TextFieldDelegate {
     /// Returns a shared instance of the delegate
     pub fn shared(mtm: MainThreadMarker) -> Retained<Self> {
         thread_local! {
-            static DELEGATE: std::cell::OnceCell<Retained<TextFieldDelegate>> = std::cell::OnceCell::new();
+            static DELEGATE: std::cell::OnceCell<Retained<TextFieldDelegate>> = const { std::cell::OnceCell::new() };
         }
         DELEGATE.with(|d| d.get_or_init(|| TextFieldDelegate::new(mtm)).clone())
     }

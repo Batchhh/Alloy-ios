@@ -1,15 +1,12 @@
 //! Handler for items
-use block2::RcBlock;
-use objc2::rc::{Allocated, Retained};
-use objc2::runtime::{AnyObject, Class};
-use objc2::{define_class, msg_send, sel, ClassType, MainThreadOnly};
+use objc2::rc::Retained;
+use objc2::{define_class, msg_send, ClassType};
 use objc2_core_foundation::CGPoint;
 use objc2_foundation::{MainThreadMarker, NSObject, NSString};
 use objc2_ui_kit::{
-    UIButton, UIControlEvents, UIGestureRecognizerState, UIPanGestureRecognizer, UISlider,
-    UITapGestureRecognizer, UITextField, UIView,
+    UIButton, UIGestureRecognizerState, UIPanGestureRecognizer, UISlider, UITapGestureRecognizer,
+    UITextField, UIView,
 };
-use std::sync::{Arc, Mutex};
 
 use super::registry::{MenuItem, REGISTRY};
 use super::utils::trigger_feedback;
