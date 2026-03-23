@@ -2,7 +2,13 @@
 RUST_PROFILE ?= release
 
 # For Linux builds (xcrun is not available on Linux)
-# export SDKROOT := $(THEOS)/sdks/iPhoneOS15.5.sdk/
+# Auto-detect the latest SDK in THEOS
+ifndef SDKROOT
+    THEOS_SDKS := $(wildcard $(THEOS)/sdks/iPhoneOS*.sdk)
+    ifneq ($(THEOS_SDKS),)
+        export SDKROOT := $(lastword $(sort $(THEOS_SDKS)))
+    endif
+endif
 
 # Enable with dev-release profile logging
 ifeq ($(RUST_PROFILE),dev-release)
@@ -23,7 +29,7 @@ ARCHS = arm64
 FINALPACKAGE = 1
 THEOS_DYLIB := .theos/obj/arm64/alloy.dylib 
 
-# TARGET ?= iphone:clang:latest:15.5  # Uncomment to specify a specific SDK version
+TARGET ?= iphone:clang:latest:latest
 
 # Uncomment the following for roothide builds
 # THEOS_PACKAGE_SCHEME = roothide
