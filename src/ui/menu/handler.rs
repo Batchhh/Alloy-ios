@@ -30,7 +30,7 @@ define_class!(
         fn handle_action(&self, sender: &UIButton) {
             trigger_feedback();
             let tag = sender.tag();
-            let registry = REGISTRY.lock().unwrap();
+            let registry = REGISTRY.lock();
             if let Some(item) = registry.items_by_id.get(&(tag as i32)).cloned() {
                 drop(registry);
                 match item {
@@ -90,7 +90,7 @@ define_class!(
                      }
                  }
              }
-             if let Some(MenuItem::Slider { callback, key, .. }) = REGISTRY.lock().unwrap().items_by_id.get(&(tag as i32)) {
+             if let Some(MenuItem::Slider { callback, key, .. }) = REGISTRY.lock().items_by_id.get(&(tag as i32)) {
                  Preferences::set_float(key, value);
                  if let Some(cb) = callback { cb(value); }
              }
@@ -100,7 +100,7 @@ define_class!(
         /// Handles text input changes
         fn handle_text_change(&self, sender: &UITextField) {
              let (tag, text) = (sender.tag(), sender.text().map(|t| t.to_string()).unwrap_or_default());
-             if let Some(MenuItem::Input { callback, key, .. }) = REGISTRY.lock().unwrap().items_by_id.get(&(tag as i32)) {
+             if let Some(MenuItem::Input { callback, key, .. }) = REGISTRY.lock().items_by_id.get(&(tag as i32)) {
                  Preferences::set_string(key, &text);
                  if let Some(cb) = callback { cb(text); }
              }

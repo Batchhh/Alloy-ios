@@ -1,17 +1,15 @@
 //! For tabs/items
 
 use once_cell::sync::Lazy;
+use parking_lot::Mutex;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 pub static TAB_REGISTRY: Lazy<Mutex<Vec<(String, i32)>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
 /// Adds a tab to the menu
 pub fn add_tab(name: &str, page_id: i32) {
-    TAB_REGISTRY
-        .lock()
-        .unwrap()
-        .push((name.to_string(), page_id));
+    TAB_REGISTRY.lock().push((name.to_string(), page_id));
 }
 
 pub type ToggleCallback = Box<dyn Fn(bool) + Send + Sync>;
@@ -102,7 +100,7 @@ pub static REGISTRY: Lazy<Mutex<MenuRegistry>> = Lazy::new(|| {
 
 macro_rules! register_item {
     ($page_id:expr, $item:expr) => {{
-        let mut reg = REGISTRY.lock().unwrap();
+        let mut reg = REGISTRY.lock();
         let id = reg.next_id;
         reg.next_id += 1;
         let mut item = $item;
@@ -194,7 +192,7 @@ pub fn add_button_with_nav(
     target_page: i32,
     callback: Option<impl Fn() + Send + Sync + 'static>,
 ) {
-    let mut reg = REGISTRY.lock().unwrap();
+    let mut reg = REGISTRY.lock();
     let id = 200 + target_page;
     let item = MenuItem::Button {
         id,
@@ -284,7 +282,7 @@ pub fn add_dropdown(
 
 /// Creates a new menu page and returns its ID
 pub fn add_page(name: &str) -> i32 {
-    let mut reg = REGISTRY.lock().unwrap();
+    let mut reg = REGISTRY.lock();
     let mut page_id = 10;
     while reg.pages.contains_key(&page_id) || page_id < 10 {
         page_id += 1;

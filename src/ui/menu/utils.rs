@@ -3,7 +3,7 @@ use objc2::rc::Retained;
 use objc2::{msg_send, ClassType};
 use objc2_ui_kit::UIColor;
 use once_cell::sync::Lazy;
-use std::sync::Mutex;
+use parking_lot::Mutex;
 
 use crate::ui::pref;
 use crate::ui::utils::feedback::UISelectionFeedbackGenerator;
@@ -13,7 +13,7 @@ pub static FEEDBACK_GEN: Lazy<Mutex<Option<Retained<UISelectionFeedbackGenerator
 
 /// Triggers haptic feedback for UI interactions
 pub fn trigger_feedback() {
-    let mut gen = FEEDBACK_GEN.lock().unwrap();
+    let mut gen = FEEDBACK_GEN.lock();
     if gen.is_none() {
         *gen = Some(UISelectionFeedbackGenerator::new());
         if let Some(g) = gen.as_ref() {

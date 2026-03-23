@@ -173,7 +173,7 @@ pub fn create_menu_view(frame: CGRect, mtm: MainThreadMarker) -> Retained<UIView
     }
 
     // Tab bar
-    let tabs = TAB_REGISTRY.lock().unwrap().clone();
+    let tabs = TAB_REGISTRY.lock().clone();
     let tab_bar_height = if tabs.is_empty() { 0.0 } else { 50.0 };
 
     if !tabs.is_empty() {
@@ -299,7 +299,7 @@ pub fn render_content(page_id: i32) {
 
                     // Animate indicator
                     if let Some(indicator) = tab_bar.viewWithTag(888) {
-                        let tabs = TAB_REGISTRY.lock().unwrap();
+                        let tabs = TAB_REGISTRY.lock();
                         if let Some(index) = tabs.iter().position(|(_, id)| *id == page_id) {
                             let width = tab_bar.frame().size.width / tabs.len() as f64;
                             let new_x = width * index as f64;
@@ -319,7 +319,7 @@ pub fn render_content(page_id: i32) {
             let mut y_offset = 16.0;
             let (item_height, padding) = (50.0, 16.0);
             let handler = ACTION_HANDLER.with(|h| h.borrow().clone()).unwrap();
-            let registry = REGISTRY.lock().unwrap();
+            let registry = REGISTRY.lock();
 
             if let Some(items) = registry.pages.get(&page_id) {
                 for item in items {

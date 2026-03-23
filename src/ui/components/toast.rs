@@ -175,15 +175,12 @@ fn present_toast(config: ToastConfig) {
                         c1.setAlpha(1.0);
                     },
                     Some({
-                        let (c2, eff, txt, dots_e, dots_b, sd, sl) = (
-                            container.clone(),
-                            effect.clone(),
-                            text_label.clone(),
-                            dots.clone(),
-                            dots.clone(),
-                            status_dot.clone(),
-                            status_layer.clone(),
-                        );
+                        let c2 = container.clone();
+                        let eff = effect.clone();
+                        let txt = text_label.clone();
+                        let dots = dots.clone();
+                        let sd = status_dot.clone();
+                        let sl = status_layer.clone();
                         move |_| {
                             animations::animate_spring_with_delay(
                                 0.5,
@@ -192,13 +189,11 @@ fn present_toast(config: ToastConfig) {
                                 0.4,
                                 0,
                                 {
-                                    let (c, e, t, d, sd) = (
-                                        c2.clone(),
-                                        eff.clone(),
-                                        txt.clone(),
-                                        dots_e.clone(),
-                                        sd.clone(),
-                                    );
+                                    let c = c2.clone();
+                                    let e = eff.clone();
+                                    let t = txt.clone();
+                                    let d = dots.clone();
+                                    let sd = sd.clone();
                                     move || {
                                         c.setFrame(CGRect::new(
                                             CGPoint::new(ex, top_padding),
@@ -219,7 +214,7 @@ fn present_toast(config: ToastConfig) {
                                 None::<fn(bool)>,
                             );
 
-                            dots_b.iter().enumerate().for_each(|(i, dot)| {
+                            dots.iter().enumerate().for_each(|(i, dot)| {
                                 let d = dot.clone();
                                 animations::animate_with_delay(
                                     0.4,

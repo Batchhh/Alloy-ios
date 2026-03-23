@@ -225,7 +225,6 @@ pub fn animate_with_delay(
 /// Pulse a view (scale down and back up)
 pub fn pulse(view: &UIView, scale: f64, duration: f64) {
     let view = retain_view(view);
-    let view_restore = view.clone();
     let view_anim = view.clone();
 
     animate_spring(
@@ -243,13 +242,13 @@ pub fn pulse(view: &UIView, scale: f64, duration: f64) {
             });
         },
         Some(move |_| {
-            let view_restore_clone = view_restore.clone();
+            let view_restore = view.clone();
             animate_spring(
                 duration / 2.0,
                 0.7,
                 0.5,
                 move || {
-                    view_restore_clone.setTransform(CGAffineTransform {
+                    view_restore.setTransform(CGAffineTransform {
                         a: 1.0,
                         b: 0.0,
                         c: 0.0,

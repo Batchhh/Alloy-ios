@@ -19,7 +19,10 @@ use objc2_ui_kit::{
     UIView, UIWindow,
 };
 use std::cell::RefCell;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
+
+static OVERLAY_RETRIES: AtomicU32 = AtomicU32::new(0);
 
 define_class!(
     #[unsafe(super(NSObject))]
@@ -172,15 +175,23 @@ pub fn init_overlay() {
     let window = match window_opt {
         Some(w) => w,
         None => {
+            let attempt = OVERLAY_RETRIES.fetch_add(1, Ordering::Relaxed);
+            if attempt >= 10 {
+                #[cfg(dev_release)]
+                logger::warning("Failed to get window after 10 attempts. Giving up.");
+                return;
+            }
+            let delay_ms = 1000 * (1u64 << attempt.min(3)); // exponential: 1s, 2s, 4s, 8s...
             #[cfg(dev_release)]
-            logger::warning("Failed to get windows! Retrying in 1 second...");
-            Queue::main().exec_after(Duration::from_secs(1), || {
+            logger::warning("Failed to get windows! Retrying...");
+            Queue::main().exec_after(Duration::from_millis(delay_ms), || {
                 init_overlay();
             });
             return;
         }
     };
 
+    OVERLAY_RETRIES.store(0, Ordering::Relaxed);
     let bounds = window.bounds();
     let menu_width = 300.0;
     let menu_height = 360.0;
@@ -364,7 +375,8 @@ pub fn alert(title: &str, text: &str, with_ok: bool) {
                 let alert_ptr = Retained::into_raw(alert) as usize;
 
                 let present = move || {
-                    let alert = Retained::from_raw(alert_ptr as *mut AnyObject).unwrap();
+                    let alert =
+                        Retained::from_raw(alert_ptr as *mut AnyObject).unwrap();
                     if let Some(mtm) = MainThreadMarker::new() {
                         if let Some(window) = get_window(mtm) {
                             if let Some(root) = window.rootViewController() {
