@@ -1,9 +1,8 @@
 # Rust library
 RUST_PROFILE ?= release
 
-# Uncomment the following for Linux builds (xcrun is not available on Linux)
+# For Linux builds (xcrun is not available on Linux)
 # export SDKROOT := $(THEOS)/sdks/iPhoneOS15.5.sdk/
-# TARGET ?= iphone:clang:latest:15.5
 
 # Enable with dev-release profile logging
 ifeq ($(RUST_PROFILE),dev-release)
@@ -20,10 +19,11 @@ before-all::
 	@printf "\033[1;36m==>\033[0m Building Rust library...\n"
 	cargo build --profile $(RUST_PROFILE) --target aarch64-apple-ios
 
-# Target configuration
 ARCHS = arm64
 FINALPACKAGE = 1
 THEOS_DYLIB := .theos/obj/arm64/alloy.dylib 
+
+# TARGET ?= iphone:clang:latest:15.5  # Uncomment to specify a specific SDK version
 
 # Uncomment the following for roothide builds
 # THEOS_PACKAGE_SCHEME = roothide
