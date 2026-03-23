@@ -21,6 +21,9 @@ ARCHS = arm64
 FINALPACKAGE = 1
 THEOS_DYLIB := .theos/obj/arm64/alloy.dylib 
 
+# Uncomment the following for roothide builds
+# THEOS_PACKAGE_SCHEME = roothide
+
 include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = alloy
