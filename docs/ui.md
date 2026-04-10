@@ -109,7 +109,9 @@ ui::add_slider_with_options(
 );
 ```
 
-The toggle state is stored separately from the slider value. Turning the toggle off does not disable the slider.
+The toggle state is stored separately from the slider value. Tapping the card
+(outside the slider track) flips the toggle — the card border highlights with
+the accent color when on, and reverts to the default border when off.
 
 ### Text Input
 
@@ -148,7 +150,9 @@ ui::add_input_with_options(
 );
 ```
 
-The toggle state is stored separately from the input text. Turning the toggle off does not block text edits.
+The toggle state is stored separately from the input text. Tapping the card
+(outside the text field) flips the toggle — the card border highlights with
+the accent color when on, and reverts to the default border when off.
 
 ### Dropdown
 

@@ -15,6 +15,13 @@ impl Preferences {
         NSString::from_str(&format!("modmenu.{}", key))
     }
 
+    /// Returns true if a value has been explicitly stored for the given key
+    pub fn has_key(key: &str) -> bool {
+        let defaults = Self::defaults();
+        let key = Self::key(key);
+        defaults.objectForKey(&key).is_some()
+    }
+
     /// Gets a boolean preference
     ///
     /// # Arguments

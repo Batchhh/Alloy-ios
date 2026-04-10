@@ -342,8 +342,11 @@ pub fn render_content(page_id: i32) {
                                 CGRect::new(CGPoint::new(padding, y_offset), CGSize::new(frame.size.width - padding * 2.0, toggle_height)),
                                 name, mtm);
                             toggle.setTag(*id as isize);
-                            let mut current = Preferences::get_bool(key);
-                            if !current && *default { current = *default; }
+                            let current = if Preferences::has_key(key) {
+                                Preferences::get_bool(key)
+                            } else {
+                                *default
+                            };
                             toggle.setSelected(current);
 
                             if let Some(bg) = toggle.viewWithTag(2) {
@@ -375,12 +378,12 @@ pub fn render_content(page_id: i32) {
                         } => {
                             let mut current = Preferences::get_float(key);
                             if current == 0.0 && *default != 0.0 { current = *default; }
-                            let toggle_selected = toggle.as_ref().map(|toggle| {
-                                let mut selected = Preferences::get_bool(&toggle.key);
-                                if !selected && toggle.default {
-                                    selected = true;
+                            let toggle_selected = toggle.as_ref().map(|t| {
+                                if Preferences::has_key(&t.key) {
+                                    Preferences::get_bool(&t.key)
+                                } else {
+                                    t.default
                                 }
-                                selected
                             });
                             let slider_height = if toggle.is_some() { 76.0 } else { item_height - 5.0 };
                             let slider_item = if let Some(selected) = toggle_selected {
@@ -413,13 +416,10 @@ pub fn render_content(page_id: i32) {
                                 slider.setTag(*id as isize);
                                 unsafe { let _: () = msg_send![&slider, addTarget: &*handler, action: sel!(handleSlider:), forControlEvents: UIControlEvents::ValueChanged]; }
                             }
-                            if toggle.is_some() {
-                                if let Some(toggle_btn) = slider_item.viewWithTag(8) {
-                                    toggle_btn.setTag(*id as isize);
-                                    unsafe {
-                                        let _: () = msg_send![&toggle_btn, addTarget: &*handler, action: sel!(handleAction:), forControlEvents: UIControlEvents::TouchUpInside];
-                                    }
-                                }
+                            if let Some(selected) = toggle_selected {
+                                slider_item.setTag(*id as isize);
+                                slider_item.setSelected(selected);
+                                unsafe { slider_item.addTarget_action_forControlEvents(Some(&handler), sel!(handleAction:), UIControlEvents::TouchUpInside); }
                             }
                             scroll_view.addSubview(&slider_item);
                             y_offset += slider_height + 12.0;
@@ -434,12 +434,12 @@ pub fn render_content(page_id: i32) {
                             toggle,
                             ..
                         } => {
-                            let toggle_selected = toggle.as_ref().map(|toggle| {
-                                let mut selected = Preferences::get_bool(&toggle.key);
-                                if !selected && toggle.default {
-                                    selected = true;
+                            let toggle_selected = toggle.as_ref().map(|t| {
+                                if Preferences::has_key(&t.key) {
+                                    Preferences::get_bool(&t.key)
+                                } else {
+                                    t.default
                                 }
-                                selected
                             });
                             let input_height = if toggle.is_some() { item_height - 2.0 } else { 70.0 };
                             let input_item = if let Some(selected) = toggle_selected {
@@ -471,13 +471,10 @@ pub fn render_content(page_id: i32) {
                                 if !val.is_empty() { let _: () = unsafe { msg_send![&input, setText: &*NSString::from_str(val)] }; }
                                 unsafe { let _: () = msg_send![&input, addTarget: &*handler, action: sel!(handleTextChange:), forControlEvents: UIControlEvents::EditingDidEnd]; }
                             }
-                            if toggle.is_some() {
-                                if let Some(toggle_btn) = input_item.viewWithTag(8) {
-                                    toggle_btn.setTag(*id as isize);
-                                    unsafe {
-                                        let _: () = msg_send![&toggle_btn, addTarget: &*handler, action: sel!(handleAction:), forControlEvents: UIControlEvents::TouchUpInside];
-                                    }
-                                }
+                            if let Some(selected) = toggle_selected {
+                                input_item.setTag(*id as isize);
+                                input_item.setSelected(selected);
+                                unsafe { input_item.addTarget_action_forControlEvents(Some(&handler), sel!(handleAction:), UIControlEvents::TouchUpInside); }
                             }
                             scroll_view.addSubview(&input_item);
                             y_offset += input_height + 12.0;
@@ -566,6 +563,20 @@ pub fn update_toggle_ui(sender: &UIButton, selected: bool) {
             },
             None::<fn(bool)>,
         );
+    }
+}
+
+pub fn update_card_toggle_ui(sender: &UIButton, selected: bool) {
+    unsafe {
+        let color = if selected {
+            Theme::accent()
+        } else {
+            Theme::container_border()
+        };
+        sender.layer().setBorderColor(Some(&color.CGColor()));
+        sender
+            .layer()
+            .setBorderWidth(if selected { 1.5 } else { 0.5 });
     }
 }
 

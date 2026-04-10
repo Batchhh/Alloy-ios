@@ -18,7 +18,7 @@ pub type InputCallback = Box<dyn Fn(String) + Send + Sync>;
 pub type ButtonCallback = Box<dyn Fn() + Send + Sync>;
 pub type DropdownCallback = Box<dyn Fn(i32) + Send + Sync>;
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct ToggleOptions {
     pub key: String,
     pub default: bool,
@@ -40,14 +40,14 @@ impl ToggleOptions {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct SliderOptions {
     pub toggle: Option<ToggleOptions>,
 }
 
 impl SliderOptions {
     pub fn new() -> Self {
-        Self::default()
+        Self { toggle: None }
     }
 
     pub fn with_toggle(mut self, toggle: ToggleOptions) -> Self {
@@ -56,14 +56,14 @@ impl SliderOptions {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct InputOptions {
     pub toggle: Option<ToggleOptions>,
 }
 
 impl InputOptions {
     pub fn new() -> Self {
-        Self::default()
+        Self { toggle: None }
     }
 
     pub fn with_toggle(mut self, toggle: ToggleOptions) -> Self {

@@ -26,22 +26,9 @@ pub use components::toast::{show_loading, show_toast, ToastStatus};
 pub use menu::utils::{get_dropdown_value, get_input_value, get_slider_value, get_toggle_value};
 #[allow(unused_imports)]
 pub use menu::{
-    add_action_button,
-    add_button,
-    add_button_with_nav,
-    add_dropdown,
-    add_input,
-    add_input_with_options,
-    add_label,
-    add_page,
-    add_section_header,
-    add_slider,
-    add_slider_with_options,
-    add_tab,
-    add_toggle,
-    InputOptions,
-    SliderOptions,
-    ToggleOptions,
+    add_action_button, add_button, add_button_with_nav, add_dropdown, add_input,
+    add_input_with_options, add_label, add_page, add_section_header, add_slider,
+    add_slider_with_options, add_tab, add_toggle, InputOptions, SliderOptions, ToggleOptions,
 };
 #[allow(unused_imports)]
 pub use window::alert;

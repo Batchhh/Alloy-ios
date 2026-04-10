@@ -10,52 +10,18 @@ use crate::ui::components::widgets::{
 };
 use crate::ui::theme::Theme;
 
-fn create_toggle_button(
-    frame: CGRect,
-    selected: bool,
-    mtm: MainThreadMarker,
-) -> Retained<UIButton> {
-    let button = UIButton::initWithFrame(UIButton::alloc(mtm), frame);
-    button.setBackgroundColor(Some(&objc2_ui_kit::UIColor::clearColor()));
-    button.setSelected(selected);
-    let toggle_bg_color = if selected {
-        Theme::accent()
-    } else {
-        Theme::toggle_off()
-    };
-
-    let toggle_bg: Retained<UIView> = UIView::initWithFrame(
-        UIView::alloc(mtm),
-        CGRect::new(CGPoint::new(0.0, 0.0), frame.size),
-    );
-    toggle_bg.setBackgroundColor(Some(&toggle_bg_color));
-    toggle_bg.layer().setCornerRadius(frame.size.height / 2.0);
-    toggle_bg.setTag(2);
-    toggle_bg.setUserInteractionEnabled(false);
-
-    let knob_size = frame.size.height - 4.0;
-    let knob_x = if selected {
-        frame.size.width - knob_size - 2.0
-    } else {
-        2.0
-    };
-    let knob: Retained<UIView> = UIView::initWithFrame(
-        UIView::alloc(mtm),
-        CGRect::new(CGPoint::new(knob_x, 2.0), CGSize::new(knob_size, knob_size)),
-    );
-    let knob_color = if selected {
-        Theme::knob_on()
-    } else {
-        Theme::accent()
-    };
-    knob.setBackgroundColor(Some(&knob_color));
-    knob.layer().setCornerRadius(knob_size / 2.0);
-    knob.setTag(3);
-    knob.setUserInteractionEnabled(false);
-
-    toggle_bg.addSubview(&knob);
-    button.addSubview(&toggle_bg);
-    button
+/// Applies the card toggle border style (accent border when on, default when off)
+fn apply_card_toggle_border(item: &UIButton, selected: bool) {
+    unsafe {
+        let color = if selected {
+            Theme::accent()
+        } else {
+            Theme::container_border()
+        };
+        item.layer().setBorderColor(Some(&color.CGColor()));
+        item.layer()
+            .setBorderWidth(if selected { 1.5 } else { 0.5 });
+    }
 }
 
 /// Creates a list item with a boolean toggle switch
@@ -314,7 +280,10 @@ pub fn create_dropdown_item(
     item
 }
 
-/// Creates a two-row slider item with an attached toggle switch.
+/// Creates a two-row slider item whose card border indicates toggle state.
+///
+/// Tap the card (outside the slider track) to toggle. The border changes
+/// between accent (on) and default (off).
 pub fn create_slider_toggle_item(
     frame: CGRect,
     label_text: &str,
@@ -325,10 +294,10 @@ pub fn create_slider_toggle_item(
     mtm: MainThreadMarker,
 ) -> Retained<UIButton> {
     let item = styled_container(frame, mtm);
-    let toggle_size = CGSize::new(44.0, 24.0);
-    let toggle_x = frame.size.width - toggle_size.width - 12.0;
+    apply_card_toggle_border(&item, toggle_selected);
+
     let value_width = 42.0;
-    let value_x = toggle_x - value_width - 10.0;
+    let value_x = frame.size.width - value_width - 12.0;
     let label_width = value_x - 22.0;
 
     item.addSubview(&create_label(
@@ -353,14 +322,6 @@ pub fn create_slider_toggle_item(
     value_label.setTag(5);
     item.addSubview(&value_label);
 
-    let toggle = create_toggle_button(
-        CGRect::new(CGPoint::new(toggle_x, 8.0), toggle_size),
-        toggle_selected,
-        mtm,
-    );
-    toggle.setTag(8);
-    item.addSubview(&toggle);
-
     let slider = create_slider(
         CGRect::new(
             CGPoint::new(12.0, 38.0),
@@ -376,7 +337,10 @@ pub fn create_slider_toggle_item(
     item
 }
 
-/// Creates a single-row input item with an attached toggle switch.
+/// Creates a single-row input item whose card border indicates toggle state.
+///
+/// Tap the card (outside the text field) to toggle. The border changes
+/// between accent (on) and default (off).
 pub fn create_text_input_toggle_item(
     frame: CGRect,
     label_text: &str,
@@ -385,10 +349,10 @@ pub fn create_text_input_toggle_item(
     mtm: MainThreadMarker,
 ) -> Retained<UIButton> {
     let item = styled_container(frame, mtm);
-    let toggle_size = CGSize::new(44.0, 24.0);
-    let toggle_x = frame.size.width - toggle_size.width - 12.0;
+    apply_card_toggle_border(&item, toggle_selected);
+
     let input_x = 136.0;
-    let input_width = toggle_x - input_x - 12.0;
+    let input_width = frame.size.width - input_x - 12.0;
 
     item.addSubview(&create_label(
         CGRect::new(CGPoint::new(12.0, 15.0), CGSize::new(116.0, 20.0)),
@@ -399,10 +363,7 @@ pub fn create_text_input_toggle_item(
     ));
 
     let input = create_text_input(
-        CGRect::new(
-            CGPoint::new(input_x, 9.0),
-            CGSize::new(input_width.max(72.0), 32.0),
-        ),
+        CGRect::new(CGPoint::new(input_x, 9.0), CGSize::new(input_width, 32.0)),
         placeholder,
         mtm,
     );
@@ -412,13 +373,5 @@ pub fn create_text_input_toggle_item(
     let delegate_ref = objc2::runtime::ProtocolObject::from_ref(&*delegate);
     input.setDelegate(Some(delegate_ref));
     item.addSubview(&input);
-
-    let toggle = create_toggle_button(
-        CGRect::new(CGPoint::new(toggle_x, 13.0), toggle_size),
-        toggle_selected,
-        mtm,
-    );
-    toggle.setTag(8);
-    item.addSubview(&toggle);
     item
 }
