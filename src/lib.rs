@@ -41,5 +41,48 @@ fn init_ui() {
     ui::add_tab("Main Settings", page_id);
     ui::add_section_header(page_id, "General Configurations");
 
+    ui::add_toggle(
+        page_id,
+        "Enable Feature",
+        "feature_enabled",
+        false,
+        Some(|state: bool| {
+            logger::info(&format!("Feature: {}", state));
+        }),
+    );
+
+    ui::add_slider_with_options(
+        page_id,
+        "Speed Multiplier",
+        "speed_value",
+        0.0,
+        100.0,
+        50.0,
+        ui::SliderOptions::new().with_toggle(
+            ui::ToggleOptions::new("speed_enabled", true).with_callback(|state: bool| {
+                logger::info(&format!("Speed enabled: {}", state));
+            }),
+        ),
+        Some(|val: f32| {
+            logger::info(&format!("Speed: {}", val));
+        }),
+    );
+
+    ui::add_input_with_options(
+        page_id,
+        "Player Name",
+        "player_name",
+        "Enter name",
+        "",
+        ui::InputOptions::new().with_toggle(
+            ui::ToggleOptions::new("name_enabled", false).with_callback(|state: bool| {
+                logger::info(&format!("Name enabled: {}", state));
+            }),
+        ),
+        Some(|text: String| {
+            logger::info(&format!("Name: {}", text));
+        }),
+    );
+
     ui::native::init_overlay();
 }
