@@ -10,7 +10,7 @@ use objc2_ui_kit::{
 
 use super::registry::{MenuItem, REGISTRY};
 use super::utils::trigger_feedback;
-use crate::ui::menu::view::{render_content, update_toggle_ui};
+use crate::ui::menu::view::{render_content, update_card_toggle_ui, update_toggle_ui};
 use crate::ui::pref::Preferences;
 use crate::ui::window::hide_menu;
 
@@ -46,6 +46,15 @@ define_class!(
                          update_toggle_ui(sender, selected);
                          if let Some(cb) = callback { cb(selected); }
                          return;
+                    }
+                    MenuItem::Slider { toggle: Some(toggle), .. }
+                    | MenuItem::Input { toggle: Some(toggle), .. } => {
+                        let selected = !sender.isSelected();
+                        sender.setSelected(selected);
+                        Preferences::set_bool(&toggle.key, selected);
+                        update_card_toggle_ui(sender, selected);
+                        if let Some(cb) = &toggle.callback { cb(selected); }
+                        return;
                     }
                     MenuItem::ActionButton { callback, .. } => {
                         trigger_feedback();

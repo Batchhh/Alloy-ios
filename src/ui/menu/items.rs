@@ -10,6 +10,20 @@ use crate::ui::components::widgets::{
 };
 use crate::ui::theme::Theme;
 
+/// Applies the card toggle border style (accent border when on, default when off)
+fn apply_card_toggle_border(item: &UIButton, selected: bool) {
+    unsafe {
+        let color = if selected {
+            Theme::accent()
+        } else {
+            Theme::container_border()
+        };
+        item.layer().setBorderColor(Some(&color.CGColor()));
+        item.layer()
+            .setBorderWidth(if selected { 1.5 } else { 0.5 });
+    }
+}
+
 /// Creates a list item with a boolean toggle switch
 ///
 /// # Arguments
@@ -263,5 +277,101 @@ pub fn create_dropdown_item(
     }
     value_label.setTag(7);
     item.addSubview(&value_label);
+    item
+}
+
+/// Creates a two-row slider item whose card border indicates toggle state.
+///
+/// Tap the card (outside the slider track) to toggle. The border changes
+/// between accent (on) and default (off).
+pub fn create_slider_toggle_item(
+    frame: CGRect,
+    label_text: &str,
+    value: f32,
+    min: f32,
+    max: f32,
+    toggle_selected: bool,
+    mtm: MainThreadMarker,
+) -> Retained<UIButton> {
+    let item = styled_container(frame, mtm);
+    apply_card_toggle_border(&item, toggle_selected);
+
+    let value_width = 42.0;
+    let value_x = frame.size.width - value_width - 12.0;
+    let label_width = value_x - 22.0;
+
+    item.addSubview(&create_label(
+        CGRect::new(CGPoint::new(12.0, 10.0), CGSize::new(label_width, 20.0)),
+        label_text,
+        14.0,
+        false,
+        mtm,
+    ));
+
+    let value_label = create_label(
+        CGRect::new(CGPoint::new(value_x, 10.0), CGSize::new(value_width, 20.0)),
+        &format!("{:.0}", value),
+        12.0,
+        true,
+        mtm,
+    );
+    value_label.setTextAlignment(objc2_ui_kit::NSTextAlignment::Right);
+    unsafe {
+        value_label.setTextColor(Some(&Theme::accent()));
+    }
+    value_label.setTag(5);
+    item.addSubview(&value_label);
+
+    let slider = create_slider(
+        CGRect::new(
+            CGPoint::new(12.0, 38.0),
+            CGSize::new(frame.size.width - 24.0, 30.0),
+        ),
+        value,
+        min,
+        max,
+        mtm,
+    );
+    slider.setTag(4);
+    item.addSubview(&slider);
+    item
+}
+
+/// Creates a single-row input item whose card border indicates toggle state.
+///
+/// Tap the card (outside the text field) to toggle. The border changes
+/// between accent (on) and default (off).
+pub fn create_text_input_toggle_item(
+    frame: CGRect,
+    label_text: &str,
+    placeholder: &str,
+    toggle_selected: bool,
+    mtm: MainThreadMarker,
+) -> Retained<UIButton> {
+    let item = styled_container(frame, mtm);
+    apply_card_toggle_border(&item, toggle_selected);
+
+    let input_x = 136.0;
+    let input_width = frame.size.width - input_x - 12.0;
+
+    item.addSubview(&create_label(
+        CGRect::new(CGPoint::new(12.0, 15.0), CGSize::new(116.0, 20.0)),
+        label_text,
+        14.0,
+        false,
+        mtm,
+    ));
+
+    let input = create_text_input(
+        CGRect::new(CGPoint::new(input_x, 9.0), CGSize::new(input_width, 32.0)),
+        placeholder,
+        mtm,
+    );
+    input.setTag(6);
+
+    let delegate = crate::ui::utils::delegate::TextFieldDelegate::shared(mtm);
+    let delegate_ref = objc2::runtime::ProtocolObject::from_ref(&*delegate);
+    input.setDelegate(Some(delegate_ref));
+    item.addSubview(&input);
     item
 }

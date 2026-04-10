@@ -88,6 +88,31 @@ ui::add_slider(
 );
 ```
 
+### Slider With Toggle
+
+```rust
+ui::add_slider_with_options(
+    page_id,
+    "Slider Option",
+    "slider_option_value",
+    0.0,
+    100.0,
+    50.0,
+    ui::SliderOptions::new().with_toggle(
+        ui::ToggleOptions::new("slider_option_enabled", true).with_callback(|state: bool| {
+            logger::info(&format!("Slider enabled: {}", state));
+        }),
+    ),
+    Some(|val: f32| {
+        logger::info(&format!("Slider value: {}", val));
+    }),
+);
+```
+
+The toggle state is stored separately from the slider value. Tapping the card
+(outside the slider track) flips the toggle — the card border highlights with
+the accent color when on, and reverts to the default border when off.
+
 ### Text Input
 
 ```rust
@@ -102,6 +127,32 @@ ui::add_input(
     }),
 );
 ```
+
+### Input With Toggle
+
+```rust
+ui::add_input_with_options(
+    page_id,
+    "Input Option",
+    "input_option_value",
+    "100",
+    "100",
+    ui::InputOptions::new().with_toggle(
+        ui::ToggleOptions::new("input_option_enabled", false).with_callback(
+            |state: bool| {
+                logger::info(&format!("Input enabled: {}", state));
+            },
+        ),
+    ),
+    Some(|text: String| {
+        logger::info(&format!("Input value: {}", text));
+    }),
+);
+```
+
+The toggle state is stored separately from the input text. Tapping the card
+(outside the text field) flips the toggle — the card border highlights with
+the accent color when on, and reverts to the default border when off.
 
 ### Dropdown
 

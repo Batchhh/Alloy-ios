@@ -18,6 +18,60 @@ pub type InputCallback = Box<dyn Fn(String) + Send + Sync>;
 pub type ButtonCallback = Box<dyn Fn() + Send + Sync>;
 pub type DropdownCallback = Box<dyn Fn(i32) + Send + Sync>;
 
+#[derive(Clone)]
+pub struct ToggleOptions {
+    pub key: String,
+    pub default: bool,
+    pub callback: Option<Arc<ToggleCallback>>,
+}
+
+impl ToggleOptions {
+    pub fn new(key: &str, default: bool) -> Self {
+        Self {
+            key: key.into(),
+            default,
+            callback: None,
+        }
+    }
+
+    pub fn with_callback(mut self, callback: impl Fn(bool) + Send + Sync + 'static) -> Self {
+        self.callback = Some(Arc::new(Box::new(callback) as ToggleCallback));
+        self
+    }
+}
+
+#[derive(Clone)]
+pub struct SliderOptions {
+    pub toggle: Option<ToggleOptions>,
+}
+
+impl SliderOptions {
+    pub fn new() -> Self {
+        Self { toggle: None }
+    }
+
+    pub fn with_toggle(mut self, toggle: ToggleOptions) -> Self {
+        self.toggle = Some(toggle);
+        self
+    }
+}
+
+#[derive(Clone)]
+pub struct InputOptions {
+    pub toggle: Option<ToggleOptions>,
+}
+
+impl InputOptions {
+    pub fn new() -> Self {
+        Self { toggle: None }
+    }
+
+    pub fn with_toggle(mut self, toggle: ToggleOptions) -> Self {
+        self.toggle = Some(toggle);
+        self
+    }
+}
+
 /// Represents a single item in the menu
 #[derive(Clone)]
 pub enum MenuItem {
@@ -35,6 +89,7 @@ pub enum MenuItem {
         min: f32,
         max: f32,
         default: f32,
+        toggle: Option<ToggleOptions>,
         callback: Option<Arc<SliderCallback>>,
     },
     Input {
@@ -43,6 +98,7 @@ pub enum MenuItem {
         key: String,
         placeholder: String,
         default: String,
+        toggle: Option<ToggleOptions>,
         callback: Option<Arc<InputCallback>>,
     },
     Button {
@@ -158,6 +214,34 @@ pub fn add_slider(
             min,
             max,
             default,
+            toggle: None,
+            callback: callback.map(|f| Arc::new(Box::new(f) as SliderCallback))
+        }
+    );
+}
+
+/// Adds a slider to the menu with additional typed options
+#[allow(clippy::too_many_arguments)]
+pub fn add_slider_with_options(
+    page_id: i32,
+    name: &str,
+    key: &str,
+    min: f32,
+    max: f32,
+    default: f32,
+    options: SliderOptions,
+    callback: Option<impl Fn(f32) + Send + Sync + 'static>,
+) {
+    register_item!(
+        page_id,
+        MenuItem::Slider {
+            id: 0,
+            name: name.into(),
+            key: key.into(),
+            min,
+            max,
+            default,
+            toggle: options.toggle,
             callback: callback.map(|f| Arc::new(Box::new(f) as SliderCallback))
         }
     );
@@ -180,6 +264,31 @@ pub fn add_input(
             key: key.into(),
             placeholder: placeholder.into(),
             default: default.into(),
+            toggle: None,
+            callback: callback.map(|f| Arc::new(Box::new(f) as InputCallback))
+        }
+    );
+}
+
+/// Adds a text input field to the menu with additional typed options
+pub fn add_input_with_options(
+    page_id: i32,
+    name: &str,
+    key: &str,
+    placeholder: &str,
+    default: &str,
+    options: InputOptions,
+    callback: Option<impl Fn(String) + Send + Sync + 'static>,
+) {
+    register_item!(
+        page_id,
+        MenuItem::Input {
+            id: 0,
+            name: name.into(),
+            key: key.into(),
+            placeholder: placeholder.into(),
+            default: default.into(),
+            toggle: options.toggle,
             callback: callback.map(|f| Arc::new(Box::new(f) as InputCallback))
         }
     );

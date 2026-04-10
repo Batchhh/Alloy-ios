@@ -13,7 +13,8 @@ use std::cell::RefCell;
 use super::handler::{MenuActionHandler, ACTION_HANDLER};
 use super::items::{
     create_action_button_item, create_button_item, create_dropdown_item, create_slider_item,
-    create_text_input_item, create_toggle_item,
+    create_slider_toggle_item, create_text_input_item, create_text_input_toggle_item,
+    create_toggle_item,
 };
 use super::registry::{MenuItem, REGISTRY, TAB_REGISTRY};
 use super::utils::hex_to_color;
@@ -341,8 +342,11 @@ pub fn render_content(page_id: i32) {
                                 CGRect::new(CGPoint::new(padding, y_offset), CGSize::new(frame.size.width - padding * 2.0, toggle_height)),
                                 name, mtm);
                             toggle.setTag(*id as isize);
-                            let mut current = Preferences::get_bool(key);
-                            if !current && *default { current = *default; }
+                            let current = if Preferences::has_key(key) {
+                                Preferences::get_bool(key)
+                            } else {
+                                *default
+                            };
                             toggle.setSelected(current);
 
                             if let Some(bg) = toggle.viewWithTag(2) {
@@ -362,25 +366,104 @@ pub fn render_content(page_id: i32) {
                             y_offset += toggle_height + 12.0;
                         }
 
-                        MenuItem::Slider { id, name, key, min, max, default, .. } => {
+                        MenuItem::Slider {
+                            id,
+                            name,
+                            key,
+                            min,
+                            max,
+                            default,
+                            toggle,
+                            ..
+                        } => {
                             let mut current = Preferences::get_float(key);
                             if current == 0.0 && *default != 0.0 { current = *default; }
-                            let slider_height = item_height - 5.0;
-                            let slider_item = create_slider_item(
-                                CGRect::new(CGPoint::new(padding, y_offset), CGSize::new(frame.size.width - padding * 2.0, slider_height)),
-                                name, current, *min, *max, mtm);
+                            let toggle_selected = toggle.as_ref().map(|t| {
+                                if Preferences::has_key(&t.key) {
+                                    Preferences::get_bool(&t.key)
+                                } else {
+                                    t.default
+                                }
+                            });
+                            let slider_height = if toggle.is_some() { 76.0 } else { item_height - 5.0 };
+                            let slider_item = if let Some(selected) = toggle_selected {
+                                create_slider_toggle_item(
+                                    CGRect::new(
+                                        CGPoint::new(padding, y_offset),
+                                        CGSize::new(frame.size.width - padding * 2.0, slider_height),
+                                    ),
+                                    name,
+                                    current,
+                                    *min,
+                                    *max,
+                                    selected,
+                                    mtm,
+                                )
+                            } else {
+                                create_slider_item(
+                                    CGRect::new(
+                                        CGPoint::new(padding, y_offset),
+                                        CGSize::new(frame.size.width - padding * 2.0, slider_height),
+                                    ),
+                                    name,
+                                    current,
+                                    *min,
+                                    *max,
+                                    mtm,
+                                )
+                            };
                             if let Some(slider) = slider_item.viewWithTag(4) {
                                 slider.setTag(*id as isize);
                                 unsafe { let _: () = msg_send![&slider, addTarget: &*handler, action: sel!(handleSlider:), forControlEvents: UIControlEvents::ValueChanged]; }
+                            }
+                            if let Some(selected) = toggle_selected {
+                                slider_item.setTag(*id as isize);
+                                slider_item.setSelected(selected);
+                                unsafe { slider_item.addTarget_action_forControlEvents(Some(&handler), sel!(handleAction:), UIControlEvents::TouchUpInside); }
                             }
                             scroll_view.addSubview(&slider_item);
                             y_offset += slider_height + 12.0;
                         }
 
-                        MenuItem::Input { id, name, key, placeholder, default, .. } => {
-                            let input_item = create_text_input_item(
-                                CGRect::new(CGPoint::new(padding, y_offset), CGSize::new(frame.size.width - padding * 2.0, 70.0)),
-                                name, placeholder, mtm);
+                        MenuItem::Input {
+                            id,
+                            name,
+                            key,
+                            placeholder,
+                            default,
+                            toggle,
+                            ..
+                        } => {
+                            let toggle_selected = toggle.as_ref().map(|t| {
+                                if Preferences::has_key(&t.key) {
+                                    Preferences::get_bool(&t.key)
+                                } else {
+                                    t.default
+                                }
+                            });
+                            let input_height = if toggle.is_some() { item_height - 2.0 } else { 70.0 };
+                            let input_item = if let Some(selected) = toggle_selected {
+                                create_text_input_toggle_item(
+                                    CGRect::new(
+                                        CGPoint::new(padding, y_offset),
+                                        CGSize::new(frame.size.width - padding * 2.0, input_height),
+                                    ),
+                                    name,
+                                    placeholder,
+                                    selected,
+                                    mtm,
+                                )
+                            } else {
+                                create_text_input_item(
+                                    CGRect::new(
+                                        CGPoint::new(padding, y_offset),
+                                        CGSize::new(frame.size.width - padding * 2.0, input_height),
+                                    ),
+                                    name,
+                                    placeholder,
+                                    mtm,
+                                )
+                            };
                             if let Some(input) = input_item.viewWithTag(6) {
                                 input.setTag(*id as isize);
                                 let current = Preferences::get_string(key);
@@ -388,8 +471,13 @@ pub fn render_content(page_id: i32) {
                                 if !val.is_empty() { let _: () = unsafe { msg_send![&input, setText: &*NSString::from_str(val)] }; }
                                 unsafe { let _: () = msg_send![&input, addTarget: &*handler, action: sel!(handleTextChange:), forControlEvents: UIControlEvents::EditingDidEnd]; }
                             }
+                            if let Some(selected) = toggle_selected {
+                                input_item.setTag(*id as isize);
+                                input_item.setSelected(selected);
+                                unsafe { input_item.addTarget_action_forControlEvents(Some(&handler), sel!(handleAction:), UIControlEvents::TouchUpInside); }
+                            }
                             scroll_view.addSubview(&input_item);
-                            y_offset += 82.0;
+                            y_offset += input_height + 12.0;
                         }
 
                         MenuItem::ActionButton { id, name, .. } => {
@@ -475,6 +563,20 @@ pub fn update_toggle_ui(sender: &UIButton, selected: bool) {
             },
             None::<fn(bool)>,
         );
+    }
+}
+
+pub fn update_card_toggle_ui(sender: &UIButton, selected: bool) {
+    unsafe {
+        let color = if selected {
+            Theme::accent()
+        } else {
+            Theme::container_border()
+        };
+        sender.layer().setBorderColor(Some(&color.CGColor()));
+        sender
+            .layer()
+            .setBorderWidth(if selected { 1.5 } else { 0.5 });
     }
 }
 
