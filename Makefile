@@ -23,7 +23,7 @@ endif
 
 before-all::
 	@printf "\033[1;36m==>\033[0m Building Rust library...\n"
-	cargo build --profile $(RUST_PROFILE) --target aarch64-apple-ios
+	env -u SDKROOT cargo build --profile $(RUST_PROFILE) --target aarch64-apple-ios
 
 ARCHS = arm64
 FINALPACKAGE = 1
@@ -72,7 +72,7 @@ deploy:
 
 rust-build:
 	@printf "\033[1;36m==>\033[0m Building Rust library...\n"
-	@cargo build --profile $(RUST_PROFILE) --target aarch64-apple-ios
+	@env -u SDKROOT cargo build --profile $(RUST_PROFILE) --target aarch64-apple-ios
 
 theos-link:
 	@find .theos/obj -name "*.dylib" -delete 2>/dev/null || true
