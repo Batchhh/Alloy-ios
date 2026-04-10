@@ -221,6 +221,7 @@ pub fn add_slider(
 }
 
 /// Adds a slider to the menu with additional typed options
+#[allow(clippy::too_many_arguments)]
 pub fn add_slider_with_options(
     page_id: i32,
     name: &str,
